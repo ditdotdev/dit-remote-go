@@ -4,7 +4,11 @@
 package datadatdat
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/datadatdat/remote-sdk-go/remote"
 	"github.com/stretchr/testify/assert"
@@ -448,34 +452,512 @@ func TestValidateParametersUnknown(t *testing.T) {
 	assert.Contains(t, err.Error(), "foo")
 }
 
-// TestListCommitsNotImplemented tests that ListCommits returns error
-func TestListCommitsNotImplemented(t *testing.T) {
+// HTTP Tests with mock server
+
+// TestListCommitsSuccess tests successful listing of commits
+func TestListCommitsSuccess(t *testing.T) {
+	// Create mock HTTP server
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify request
+		assert.Equal(t, "/api/v1/repos/testorg/testrepo/commits", r.URL.Path)
+		assert.Equal(t, "list-commits", r.URL.Query().Get("action"))
+		assert.Equal(t, "GET", r.Method)
+
+		// Send response
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(listCommitsResponse{
+			Repo: "testrepo",
+			Commits: []commitResponse{
+				{
+					CommitID:  "commit1",
+					Repo:      "testrepo",
+					Timestamp: time.Now(),
+					Size:      1024,
+					Author:    "user1",
+					Message:   "First commit",
+				},
+				{
+					CommitID:  "commit2",
+					Repo:      "testrepo",
+					Timestamp: time.Now().Add(-1 * time.Hour),
+					Size:      2048,
+					Author:    "user2",
+					Message:   "Second commit",
+					Tags:      []string{"env:prod", "version:1.0"},
+				},
+			},
+		})
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	// Test ListCommits
 	r := remote.Get("datadatdat")
-	_, err := r.ListCommits(
+	commits, err := r.ListCommits(
 		map[string]interface{}{
-			"api_base_url": "http://localhost",
-			"org":          "org",
-			"repo":         "repo",
+			"api_base_url": server.URL,
+			"org":          "testorg",
+			"repo":         "testrepo",
 		},
 		map[string]interface{}{},
 		[]remote.Tag{},
 	)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not yet implemented")
+
+	assert.NoError(t, err)
+	assert.Len(t, commits, 2)
+	assert.Equal(t, "commit1", commits[0].ID)
+	assert.Equal(t, "commit2", commits[1].ID)
+	assert.Equal(t, "user1", commits[0].Properties["author"])
+	assert.Equal(t, "Second commit", commits[1].Properties["message"])
 }
 
-// TestGetCommitNotImplemented tests that GetCommit returns error
-func TestGetCommitNotImplemented(t *testing.T) {
+// TestListCommitsWithAuthentication tests that Bearer token is sent
+func TestListCommitsWithAuthentication(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify Bearer token
+		assert.Equal(t, "Bearer secret123", r.Header.Get("Authorization"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(listCommitsResponse{
+			Repo:    "testrepo",
+			Commits: []commitResponse{},
+		})
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
 	r := remote.Get("datadatdat")
-	_, err := r.GetCommit(
+	_, err := r.ListCommits(
 		map[string]interface{}{
-			"api_base_url": "http://localhost",
-			"org":          "org",
-			"repo":         "repo",
+			"api_base_url": server.URL,
+			"org":          "testorg",
+			"repo":         "testrepo",
+		},
+		map[string]interface{}{
+			"api_token": "secret123",
+		},
+		[]remote.Tag{},
+	)
+
+	assert.NoError(t, err)
+}
+
+// TestListCommitsWithTagFiltering tests client-side tag filtering
+func TestListCommitsWithTagFiltering(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(listCommitsResponse{
+			Repo: "testrepo",
+			Commits: []commitResponse{
+				{
+					CommitID: "commit1",
+					Tags:     []string{"env:prod", "version:1.0"},
+				},
+				{
+					CommitID: "commit2",
+					Tags:     []string{"env:dev", "version:1.0"},
+				},
+				{
+					CommitID: "commit3",
+					Tags:     []string{"env:prod", "version:2.0"},
+				},
+			},
+		})
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	r := remote.Get("datadatdat")
+
+	// Filter for env:prod
+	envProd := "prod"
+	commits, err := r.ListCommits(
+		map[string]interface{}{
+			"api_base_url": server.URL,
+			"org":          "testorg",
+			"repo":         "testrepo",
+		},
+		map[string]interface{}{},
+		[]remote.Tag{{Key: "env", Value: &envProd}},
+	)
+
+	assert.NoError(t, err)
+	assert.Len(t, commits, 2)
+	assert.Equal(t, "commit1", commits[0].ID)
+	assert.Equal(t, "commit3", commits[1].ID)
+}
+
+// TestListCommitsServerError tests handling of server errors
+func TestListCommitsServerError(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Internal server error"))
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	r := remote.Get("datadatdat")
+	_, err := r.ListCommits(
+		map[string]interface{}{
+			"api_base_url": server.URL,
+			"org":          "testorg",
+			"repo":         "testrepo",
+		},
+		map[string]interface{}{},
+		[]remote.Tag{},
+	)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "500")
+}
+
+// TestListCommitsInvalidResponse tests handling of invalid JSON
+func TestListCommitsInvalidResponse(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("invalid json"))
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	r := remote.Get("datadatdat")
+	_, err := r.ListCommits(
+		map[string]interface{}{
+			"api_base_url": server.URL,
+			"org":          "testorg",
+			"repo":         "testrepo",
+		},
+		map[string]interface{}{},
+		[]remote.Tag{},
+	)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "decode")
+}
+
+// TestGetCommitSuccess tests successful retrieval of a commit
+func TestGetCommitSuccess(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/repos/testorg/testrepo/commits/commit123", r.URL.Path)
+		assert.Equal(t, "GET", r.Method)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(commitResponse{
+			CommitID:  "commit123",
+			Repo:      "testrepo",
+			Timestamp: time.Now(),
+			Size:      1024,
+			Author:    "testuser",
+			Message:   "Test commit",
+			ParentID:  "parent123",
+			Tags:      []string{"env:test"},
+		})
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	r := remote.Get("datadatdat")
+	commit, err := r.GetCommit(
+		map[string]interface{}{
+			"api_base_url": server.URL,
+			"org":          "testorg",
+			"repo":         "testrepo",
 		},
 		map[string]interface{}{},
 		"commit123",
 	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, commit)
+	assert.Equal(t, "commit123", commit.ID)
+	assert.Equal(t, "testuser", commit.Properties["author"])
+	assert.Equal(t, "Test commit", commit.Properties["message"])
+	assert.Equal(t, "parent123", commit.Properties["parentId"])
+}
+
+// TestGetCommitNotFound tests 404 response
+func TestGetCommitNotFound(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Commit not found"))
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	r := remote.Get("datadatdat")
+	commit, err := r.GetCommit(
+		map[string]interface{}{
+			"api_base_url": server.URL,
+			"org":          "testorg",
+			"repo":         "testrepo",
+		},
+		map[string]interface{}{},
+		"nonexistent",
+	)
+
+	assert.NoError(t, err)
+	assert.Nil(t, commit)
+}
+
+// TestGetCommitWithAuthentication tests that Bearer token is sent
+func TestGetCommitWithAuthentication(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "Bearer mytoken", r.Header.Get("Authorization"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(commitResponse{
+			CommitID: "commit123",
+		})
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	r := remote.Get("datadatdat")
+	_, err := r.GetCommit(
+		map[string]interface{}{
+			"api_base_url": server.URL,
+			"org":          "testorg",
+			"repo":         "testrepo",
+		},
+		map[string]interface{}{
+			"api_token": "mytoken",
+		},
+		"commit123",
+	)
+
+	assert.NoError(t, err)
+}
+
+// TestGetCommitServerError tests handling of server errors
+func TestGetCommitServerError(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Database error"))
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	r := remote.Get("datadatdat")
+	_, err := r.GetCommit(
+		map[string]interface{}{
+			"api_base_url": server.URL,
+			"org":          "testorg",
+			"repo":         "testrepo",
+		},
+		map[string]interface{}{},
+		"commit123",
+	)
+
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not yet implemented")
+	assert.Contains(t, err.Error(), "500")
+}
+
+// TestGetCommitInvalidResponse tests handling of invalid JSON
+func TestGetCommitInvalidResponse(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("not json"))
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	r := remote.Get("datadatdat")
+	_, err := r.GetCommit(
+		map[string]interface{}{
+			"api_base_url": server.URL,
+			"org":          "testorg",
+			"repo":         "testrepo",
+		},
+		map[string]interface{}{},
+		"commit123",
+	)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "decode")
+}
+
+// TestBuildAPIURLMissingProperties tests error handling for missing properties
+func TestBuildAPIURLMissingProperties(t *testing.T) {
+	p := NewProvider()
+
+	// Missing api_base_url
+	_, err := p.buildAPIURL(map[string]interface{}{
+		"org":  "testorg",
+		"repo": "testrepo",
+	}, "/commits")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "api_base_url")
+
+	// Missing org
+	_, err = p.buildAPIURL(map[string]interface{}{
+		"api_base_url": "http://localhost",
+		"repo":         "testrepo",
+	}, "/commits")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "org")
+
+	// Missing repo
+	_, err = p.buildAPIURL(map[string]interface{}{
+		"api_base_url": "http://localhost",
+		"org":          "testorg",
+	}, "/commits")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "repo")
+}
+
+// TestParseCommitResponseMinimal tests parsing a minimal commit response
+func TestParseCommitResponseMinimal(t *testing.T) {
+	cr := commitResponse{
+		CommitID:  "minimal123",
+		Timestamp: time.Now(),
+		Size:      100,
+	}
+
+	commit := parseCommitResponse(cr)
+	assert.Equal(t, "minimal123", commit.ID)
+	assert.NotNil(t, commit.Properties["timestamp"])
+	assert.Equal(t, int64(100), commit.Properties["size"])
+	assert.Nil(t, commit.Properties["author"])
+	assert.Nil(t, commit.Properties["message"])
+}
+
+// TestParseCommitResponseWithMetadata tests parsing commit with custom metadata
+func TestParseCommitResponseWithMetadata(t *testing.T) {
+	cr := commitResponse{
+		CommitID:  "meta123",
+		Timestamp: time.Now(),
+		Size:      200,
+		Metadata: map[string]interface{}{
+			"custom_field": "custom_value",
+			"number":       42,
+		},
+	}
+
+	commit := parseCommitResponse(cr)
+	assert.Equal(t, "meta123", commit.ID)
+	assert.Equal(t, "custom_value", commit.Properties["custom_field"])
+	assert.Equal(t, 42, commit.Properties["number"])
+}
+
+// TestParseCommitResponseWithSingleTag tests parsing a commit with single tag
+func TestParseCommitResponseWithSingleTag(t *testing.T) {
+	cr := commitResponse{
+		CommitID:  "tag123",
+		Timestamp: time.Now(),
+		Size:      300,
+		Tags:      []string{"single"},
+	}
+
+	commit := parseCommitResponse(cr)
+	tagsMap, ok := commit.Properties["tags"].(map[string]string)
+	assert.True(t, ok)
+	assert.Equal(t, "", tagsMap["single"])
+}
+
+// TestMatchesTagsEmpty tests matching with no tags specified
+func TestMatchesTagsEmpty(t *testing.T) {
+	commit := remote.Commit{
+		ID:         "commit1",
+		Properties: map[string]interface{}{},
+	}
+
+	// Should match when no tags specified
+	assert.True(t, matchesTags(commit, []remote.Tag{}))
+}
+
+// TestMatchesTagsNoCommitTags tests matching when commit has no tags
+func TestMatchesTagsNoCommitTags(t *testing.T) {
+	commit := remote.Commit{
+		ID:         "commit1",
+		Properties: map[string]interface{}{},
+	}
+
+	envVal := "prod"
+	// Should not match when filter tags specified but commit has none
+	assert.False(t, matchesTags(commit, []remote.Tag{{Key: "env", Value: &envVal}}))
+}
+
+// TestMatchesTagsKeyOnly tests matching with key-only tag filter
+func TestMatchesTagsKeyOnly(t *testing.T) {
+	commit := remote.Commit{
+		ID: "commit1",
+		Properties: map[string]interface{}{
+			"tags": map[string]string{
+				"env":     "prod",
+				"version": "1.0",
+			},
+		},
+	}
+
+	// Should match when key exists (value not specified in filter)
+	assert.True(t, matchesTags(commit, []remote.Tag{{Key: "env", Value: nil}}))
+}
+
+// TestListCommitsEmpty tests listing commits with empty response
+func TestListCommitsEmpty(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(listCommitsResponse{
+			Repo:    "testrepo",
+			Commits: []commitResponse{},
+		})
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	r := remote.Get("datadatdat")
+	commits, err := r.ListCommits(
+		map[string]interface{}{
+			"api_base_url": server.URL,
+			"org":          "testorg",
+			"repo":         "testrepo",
+		},
+		map[string]interface{}{},
+		[]remote.Tag{},
+	)
+
+	assert.NoError(t, err)
+	assert.Len(t, commits, 0)
+}
+
+// TestListCommitsBadProperties tests error when properties are invalid
+func TestListCommitsBadProperties(t *testing.T) {
+	r := remote.Get("datadatdat")
+	_, err := r.ListCommits(
+		map[string]interface{}{
+			"org":  "testorg",
+			"repo": "testrepo",
+			// Missing api_base_url
+		},
+		map[string]interface{}{},
+		[]remote.Tag{},
+	)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "api_base_url")
+}
+
+// TestGetCommitBadProperties tests error when properties are invalid
+func TestGetCommitBadProperties(t *testing.T) {
+	r := remote.Get("datadatdat")
+	_, err := r.GetCommit(
+		map[string]interface{}{
+			"org":  "testorg",
+			"repo": "testrepo",
+			// Missing api_base_url
+		},
+		map[string]interface{}{},
+		"commit123",
+	)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "api_base_url")
 }
