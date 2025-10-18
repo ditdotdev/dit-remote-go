@@ -63,7 +63,7 @@ jobs:
         env:
           GOPRIVATE: github.com/datadatdat/*
       - name: Test
-        run: go test ./...
+        run: go test -v ./...
         env:
           GOPRIVATE: github.com/datadatdat/*
       - name: Upload Artifact
