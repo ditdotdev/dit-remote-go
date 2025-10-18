@@ -4,20 +4,148 @@
 package datadatdat
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/datadatdat/remote-sdk-go/remote"
 )
 
 // Provider implements the remote.Remote interface for datadatdat-remote-server.
 type Provider struct {
+	httpClient *http.Client
+}
+
+// getHTTPClient returns the HTTP client, initializing it if necessary
+func (p *Provider) getHTTPClient() *http.Client {
+	if p.httpClient == nil {
+		p.httpClient = &http.Client{
+			Timeout: 30 * time.Second,
+		}
+	}
+	return p.httpClient
+}
+
+// commitResponse represents the API response for a single commit
+type commitResponse struct {
+	Repo      string                 `json:"repo"`
+	CommitID  string                 `json:"commitId"`
+	Timestamp time.Time              `json:"timestamp"`
+	Size      int64                  `json:"size"`
+	Author    string                 `json:"author,omitempty"`
+	Message   string                 `json:"message,omitempty"`
+	ParentID  string                 `json:"parentId,omitempty"`
+	Tags      []string               `json:"tags,omitempty"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// listCommitsResponse represents the API response for listing commits
+type listCommitsResponse struct {
+	Repo       string           `json:"repo"`
+	Commits    []commitResponse `json:"commits"`
+	NextCursor string           `json:"nextCursor,omitempty"`
 }
 
 // NewProvider creates a new datadatdat remote provider instance.
 func NewProvider() *Provider {
-	return &Provider{}
+	return &Provider{
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+	}
+}
+
+// buildAPIURL constructs the full API URL for a given path
+func (p *Provider) buildAPIURL(properties map[string]interface{}, path string) (string, error) {
+	apiBaseURL, ok := properties["api_base_url"].(string)
+	if !ok {
+		return "", fmt.Errorf("missing or invalid api_base_url property")
+	}
+
+	org, ok := properties["org"].(string)
+	if !ok {
+		return "", fmt.Errorf("missing or invalid org property")
+	}
+
+	repo, ok := properties["repo"].(string)
+	if !ok {
+		return "", fmt.Errorf("missing or invalid repo property")
+	}
+
+	// Build the full URL
+	fullURL := fmt.Sprintf("%s/api/v1/repos/%s/%s%s", apiBaseURL, org, repo, path)
+	return fullURL, nil
+}
+
+// doRequest performs an HTTP request with optional authentication
+func (p *Provider) doRequest(ctx context.Context, method, url string, body io.Reader, parameters map[string]interface{}) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	// Add Bearer token if present
+	if apiToken, ok := parameters["api_token"].(string); ok && apiToken != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiToken))
+	}
+
+	resp, err := p.getHTTPClient().Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request failed: %w", err)
+	}
+
+	return resp, nil
+}
+
+// parseCommitResponse converts API commit response to remote.Commit
+func parseCommitResponse(cr commitResponse) remote.Commit {
+	properties := make(map[string]interface{})
+
+	// Add standard properties
+	properties["timestamp"] = cr.Timestamp
+	properties["size"] = cr.Size
+
+	if cr.Author != "" {
+		properties["author"] = cr.Author
+	}
+	if cr.Message != "" {
+		properties["message"] = cr.Message
+	}
+	if cr.ParentID != "" {
+		properties["parentId"] = cr.ParentID
+	}
+	if len(cr.Tags) > 0 {
+		// Convert tags array to map for compatibility
+		tagsMap := make(map[string]string)
+		for _, tag := range cr.Tags {
+			parts := strings.SplitN(tag, ":", 2)
+			if len(parts) == 2 {
+				tagsMap[parts[0]] = parts[1]
+			} else {
+				tagsMap[tag] = ""
+			}
+		}
+		properties["tags"] = tagsMap
+	}
+
+	// Merge any additional metadata
+	for k, v := range cr.Metadata {
+		if _, exists := properties[k]; !exists {
+			properties[k] = v
+		}
+	}
+
+	return remote.Commit{
+		ID:         cr.CommitID,
+		Properties: properties,
+	}
 }
 
 // Type returns the remote type identifier for the datadatdat remote.
@@ -227,16 +355,113 @@ func (p *Provider) ValidateParameters(parameters map[string]interface{}) error {
 
 // ListCommits returns a list of available commits from the remote server, optionally filtered by tags.
 func (p *Provider) ListCommits(properties map[string]interface{}, parameters map[string]interface{}, tags []remote.Tag) ([]remote.Commit, error) {
-	// TODO: Implement HTTP API call to list commits
-	// GET /api/v1/repos/{org}/{repo}/commits?tag=key:value
-	return nil, fmt.Errorf("ListCommits not yet implemented")
+	// Build the API URL
+	apiURL, err := p.buildAPIURL(properties, "/commits")
+	if err != nil {
+		return nil, err
+	}
+
+	// Add query parameter to indicate list action
+	fullURL := apiURL + "?action=list-commits"
+
+	// TODO: Add tag filtering support when server implements it
+	// For now, we'll filter client-side
+
+	// Make the HTTP request
+	ctx := context.Background()
+	resp, err := p.doRequest(ctx, http.MethodGet, fullURL, nil, parameters)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Handle error responses
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server returned error: %d - %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// Parse the response
+	var listResp listCommitsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&listResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Convert to remote.Commit format
+	commits := make([]remote.Commit, 0, len(listResp.Commits))
+	for _, cr := range listResp.Commits {
+		commit := parseCommitResponse(cr)
+
+		// Apply tag filtering if tags are specified
+		if len(tags) == 0 {
+			commits = append(commits, commit)
+		} else if matchesTags(commit, tags) {
+			commits = append(commits, commit)
+		}
+	}
+
+	return commits, nil
 }
 
 // GetCommit retrieves a specific commit by its identifier from the remote server.
 func (p *Provider) GetCommit(properties map[string]interface{}, parameters map[string]interface{}, commitID string) (*remote.Commit, error) {
-	// TODO: Implement HTTP API call to get commit metadata
-	// GET /api/v1/repos/{org}/{repo}/commits/{commitID}
-	return nil, fmt.Errorf("GetCommit not yet implemented")
+	// Build the API URL
+	apiURL, err := p.buildAPIURL(properties, fmt.Sprintf("/commits/%s", commitID))
+	if err != nil {
+		return nil, err
+	}
+
+	// Make the HTTP request
+	ctx := context.Background()
+	resp, err := p.doRequest(ctx, http.MethodGet, apiURL, nil, parameters)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Handle 404 - commit not found
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+
+	// Handle other error responses
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server returned error: %d - %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// Parse the response
+	var cr commitResponse
+	if err := json.NewDecoder(resp.Body).Decode(&cr); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	commit := parseCommitResponse(cr)
+	return &commit, nil
+}
+
+// matchesTags checks if a commit matches all specified tag filters
+func matchesTags(commit remote.Commit, tags []remote.Tag) bool {
+	commitTags, ok := commit.Properties["tags"].(map[string]string)
+	if !ok {
+		return len(tags) == 0
+	}
+
+	for _, tag := range tags {
+		value, exists := commitTags[tag.Key]
+
+		// If tag key doesn't exist in commit, no match
+		if !exists {
+			return false
+		}
+
+		// If tag value is specified and doesn't match, no match
+		if tag.Value != nil && value != *tag.Value {
+			return false
+		}
+	}
+
+	return true
 }
 
 func init() {
