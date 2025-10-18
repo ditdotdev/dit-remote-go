@@ -38,29 +38,67 @@ func (p *Provider) FromURL(rawURL string, additionalProperties map[string]string
 		return nil, fmt.Errorf("unsupported scheme %s: must be http or https", parsedURL.Scheme)
 	}
 
+	// Validate host is present
+	if parsedURL.Host == "" {
+		return nil, fmt.Errorf("missing host in URL")
+	}
+
 	// Extract org/repo from path
 	path := strings.Trim(parsedURL.Path, "/")
+	if path == "" {
+		return nil, fmt.Errorf("invalid path: expected /org/repo format")
+	}
 	pathParts := strings.Split(path, "/")
 	if len(pathParts) < 2 {
 		return nil, fmt.Errorf("invalid path: expected /org/repo format")
+	}
+	if len(pathParts) > 2 {
+		return nil, fmt.Errorf("invalid path: too many segments, expected /org/repo format")
 	}
 
 	org := pathParts[0]
 	repo := pathParts[1]
 
+	if org == "" || repo == "" {
+		return nil, fmt.Errorf("invalid path: org and repo cannot be empty")
+	}
+
 	// Build API base URL (scheme://host:port)
 	apiBaseURL := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
+
+	// Extract hostname and port separately
+	hostname := parsedURL.Hostname()
+	portStr := parsedURL.Port()
 
 	properties := map[string]interface{}{
 		"api_base_url": apiBaseURL,
 		"org":          org,
 		"repo":         repo,
 		"scheme":       parsedURL.Scheme,
-		"host":         parsedURL.Host,
+		"host":         hostname,
 	}
 
-	// Add any additional properties (e.g., API tokens)
+	// Add port if present
+	if portStr != "" {
+		port := 0
+		_, err := fmt.Sscanf(portStr, "%d", &port)
+		if err != nil {
+			return nil, fmt.Errorf("invalid port: %s", portStr)
+		}
+		if port < 1 || port > 65535 {
+			return nil, fmt.Errorf("invalid port: %d (must be between 1 and 65535)", port)
+		}
+		properties["port"] = port
+	}
+
+	// Validate and add additional properties (only api_token is allowed)
+	allowedProps := map[string]bool{
+		"api_token": true,
+	}
 	for k, v := range additionalProperties {
+		if !allowedProps[k] {
+			return nil, fmt.Errorf("unknown additional property: %s", k)
+		}
 		properties[k] = v
 	}
 
@@ -95,6 +133,7 @@ func (p *Provider) ToURL(properties map[string]interface{}) (string, map[string]
 		"repo":         true,
 		"scheme":       true,
 		"host":         true,
+		"port":         true,
 	}
 
 	for k, v := range properties {
@@ -124,13 +163,65 @@ func (p *Provider) ValidateRemote(properties map[string]interface{}) error {
 			return fmt.Errorf("missing required property: %s", prop)
 		}
 	}
+
+	// Validate allowed properties
+	allowedProps := map[string]bool{
+		"api_base_url": true,
+		"org":          true,
+		"repo":         true,
+		"scheme":       true,
+		"host":         true,
+		"port":         true,
+		"api_token":    true,
+	}
+
+	for k := range properties {
+		if !allowedProps[k] {
+			return fmt.Errorf("unknown property: %s", k)
+		}
+	}
+
+	// Validate port if present
+	if port, ok := properties["port"]; ok {
+		portInt := 0
+		switch v := port.(type) {
+		case int:
+			portInt = v
+		case float64:
+			portInt = int(v)
+		case float32:
+			portInt = int(v)
+		default:
+			return fmt.Errorf("invalid port type: must be integer")
+		}
+
+		if portInt < 1 || portInt > 65535 {
+			return fmt.Errorf("invalid port: %d (must be between 1 and 65535)", portInt)
+		}
+	}
+
 	return nil
 }
 
 // ValidateParameters validates the operation parameters.
 func (p *Provider) ValidateParameters(parameters map[string]interface{}) error {
-	// For MVP, no additional validation needed
-	// In the future, validate API tokens here
+	// Validate allowed parameters
+	allowedParams := map[string]bool{
+		"api_token":    true,
+		"api_base_url": true,
+		"org":          true,
+		"repo":         true,
+		"scheme":       true,
+		"host":         true,
+		"port":         true,
+	}
+
+	for k := range parameters {
+		if !allowedParams[k] {
+			return fmt.Errorf("unknown parameter: %s", k)
+		}
+	}
+
 	return nil
 }
 
@@ -146,4 +237,8 @@ func (p *Provider) GetCommit(properties map[string]interface{}, parameters map[s
 	// TODO: Implement HTTP API call to get commit metadata
 	// GET /api/v1/repos/{org}/{repo}/commits/{commitID}
 	return nil, fmt.Errorf("GetCommit not yet implemented")
+}
+
+func init() {
+	remote.Register(&Provider{})
 }
