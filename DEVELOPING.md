@@ -5,55 +5,33 @@ For general information about contributing changes, see the
 
 ## How it Works
 
-Describe the internal mechanisms necessary for developers to understand how
-to get started making changes.
+The provider uses the Datadatdat `remote-sdk-go` to provide interfaces for
+Datadatdat (d3 CLI) to use. The provider implements the `remote.Remote` interface
+and communicates with datadatdat-remote-server via HTTP APIs.
+
+This provider enables d3 to use datadatdat-remote-server as a storage backend,
+providing a "GitHub for d3" experience with web UI, organizations, and collaboration.
 
 ## Building
 
-For Docker-based projects:
-```bash
-docker build -t datadatdat/REPOSITORY_NAME:latest .
-```
+Run `go build -v ./...`.
 
-For other projects, describe the specific build process.
+To build the plugin binary:
+
+```bash
+go build -o datadatdat ./cmd/datadatdat
+```
 
 ## Testing
 
-Describe how to test the project locally:
-```bash
-# Example for Docker projects
-docker run --rm datadatdat/REPOSITORY_NAME:latest
-```
+Run `go test -v ./...`.
 
 ## Releasing
 
-This repository uses automated releases via GitHub Actions:
+Push a tag of the form `v<X>.<Y>.<Z>`, and publish the draft release in GitHub.
 
-### Creating a Release
+## Integration with d3 CLI
 
-1. **Create and push a version tag:**
-   ```bash
-   git tag v1.0.1
-   git push origin v1.0.1
-   ```
-
-2. **Automated workflow triggers:**
-   - Builds the project (Docker image for containerized projects)
-   - Publishes to appropriate registry (Docker Hub, etc.)
-   - Creates GitHub release with auto-generated notes
-
-### Docker Projects
-
-For Docker-based projects, releases automatically publish to:
-- `datadatdat/REPOSITORY_NAME:v1.0.1` (version-specific tag)
-- `datadatdat/REPOSITORY_NAME:latest` (latest tag)
-
-### Release Notes
-
-The draft release workflow automatically updates release notes on each push to master. Release notes are categorized by:
-- 🚀 Features
-- 🐛 Bug Fixes  
-- 🧰 Maintenance
-- 🐳 Docker changes
-
-Use appropriate labels on PRs to ensure proper categorization.
+The d3 CLI loads this provider as a gRPC plugin using Hashicorp's go-plugin.
+When you add a remote with `http://` or `https://` scheme, d3 automatically
+loads this provider to handle the communication with datadatdat-remote-server.
