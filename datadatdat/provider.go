@@ -149,9 +149,9 @@ func parseCommitResponse(cr commitResponse) remote.Commit {
 }
 
 // Type returns the remote type identifier for the datadatdat remote.
-// Returns "http" as this provider handles http:// URIs
+// Returns "datadatdat" to match the Kotlin provider name
 func (p *Provider) Type() (string, error) {
-	return "http", nil
+	return "datadatdat", nil
 }
 
 // FromURL parses a datadatdat remote URL and additional properties to create remote properties.
@@ -468,16 +468,17 @@ func matchesTags(commit remote.Commit, tags []remote.Tag) bool {
 func init() {
 	p := &Provider{}
 	remote.Register(p)
-	// Also register for https scheme
+	// Also register for http and https schemes
+	remote.Register(&httpProvider{Provider: p})
 	remote.Register(&httpsProvider{Provider: p})
 }
 
-// httpsProvider is a wrapper that returns "https" as the type
-// but delegates all other methods to the underlying Provider
-type httpsProvider struct {
+// httpProvider is a wrapper for http:// URLs that delegates to Provider
+type httpProvider struct {
 	*Provider
 }
 
-func (p *httpsProvider) Type() (string, error) {
-	return "https", nil
+// httpsProvider is a wrapper for https:// URLs that delegates to Provider
+type httpsProvider struct {
+	*Provider
 }
