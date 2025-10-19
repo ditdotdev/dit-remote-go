@@ -473,12 +473,22 @@ func init() {
 	remote.Register(&httpsProvider{Provider: p})
 }
 
-// httpProvider is a wrapper for http:// URLs that delegates to Provider
+// httpProvider is a wrapper for http:// URLs
+// It returns "http" for URL scheme matching but delegates all other methods to Provider
 type httpProvider struct {
 	*Provider
 }
 
-// httpsProvider is a wrapper for https:// URLs that delegates to Provider
+func (p *httpProvider) Type() (string, error) {
+	return "http", nil
+}
+
+// httpsProvider is a wrapper for https:// URLs
+// It returns "https" for URL scheme matching but delegates all other methods to Provider
 type httpsProvider struct {
 	*Provider
+}
+
+func (p *httpsProvider) Type() (string, error) {
+	return "https", nil
 }
