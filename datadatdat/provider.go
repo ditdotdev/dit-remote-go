@@ -195,16 +195,12 @@ func (p *Provider) FromURL(rawURL string, additionalProperties map[string]string
 	// Build API base URL (scheme://host:port)
 	apiBaseURL := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
 
-	// Extract hostname and port separately
-	hostname := parsedURL.Hostname()
 	portStr := parsedURL.Port()
 
 	properties := map[string]interface{}{
 		"api_base_url": apiBaseURL,
 		"org":          org,
 		"repo":         repo,
-		"scheme":       parsedURL.Scheme,
-		"host":         hostname,
 	}
 
 	// Add port if present
@@ -260,8 +256,6 @@ func (p *Provider) ToURL(properties map[string]interface{}) (string, map[string]
 		"api_base_url": true,
 		"org":          true,
 		"repo":         true,
-		"scheme":       true,
-		"host":         true,
 		"port":         true,
 	}
 
@@ -293,13 +287,11 @@ func (p *Provider) ValidateRemote(properties map[string]interface{}) error {
 		}
 	}
 
-	// Validate allowed properties
+	// Validate allowed properties (must match what the Kotlin server accepts)
 	allowedProps := map[string]bool{
 		"api_base_url": true,
 		"org":          true,
 		"repo":         true,
-		"scheme":       true,
-		"host":         true,
 		"port":         true,
 		"api_token":    true,
 	}
@@ -334,14 +326,12 @@ func (p *Provider) ValidateRemote(properties map[string]interface{}) error {
 
 // ValidateParameters validates the operation parameters.
 func (p *Provider) ValidateParameters(parameters map[string]interface{}) error {
-	// Validate allowed parameters
+	// Validate allowed parameters (must match what the Kotlin server accepts)
 	allowedParams := map[string]bool{
 		"api_token":    true,
 		"api_base_url": true,
 		"org":          true,
 		"repo":         true,
-		"scheme":       true,
-		"host":         true,
 		"port":         true,
 	}
 
@@ -468,27 +458,8 @@ func matchesTags(commit remote.Commit, tags []remote.Tag) bool {
 func init() {
 	p := &Provider{}
 	remote.Register(p)
-	// Also register for http and https schemes
-	remote.Register(&httpProvider{Provider: p})
-	remote.Register(&httpsProvider{Provider: p})
-}
-
-// httpProvider is a wrapper for http:// URLs
-// It returns "http" for URL scheme matching but delegates all other methods to Provider
-type httpProvider struct {
-	*Provider
-}
-
-func (p *httpProvider) Type() (string, error) {
-	return "http", nil
-}
-
-// httpsProvider is a wrapper for https:// URLs
-// It returns "https" for URL scheme matching but delegates all other methods to Provider
-type httpsProvider struct {
-	*Provider
-}
-
-func (p *httpsProvider) Type() (string, error) {
-	return "https", nil
+	// NOTE: We don't register separate http/https providers because
+	// the datadatdat provider handles both http:// and https:// URLs
+	// directly in its FromURL() method. Registering separate providers
+	// would cause the wrong provider name to be returned.
 }
