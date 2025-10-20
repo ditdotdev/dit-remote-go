@@ -32,8 +32,6 @@ func TestFromURL(t *testing.T) {
 		assert.Equal(t, "http://data.datadatdat.io:8080", props["api_base_url"])
 		assert.Equal(t, "myorg", props["org"])
 		assert.Equal(t, "myrepo", props["repo"])
-		assert.Equal(t, "http", props["scheme"])
-		assert.Equal(t, "data.datadatdat.io", props["host"])
 		assert.Equal(t, 8080, props["port"])
 	}
 }
@@ -47,8 +45,6 @@ func TestFromURLHTTPS(t *testing.T) {
 		assert.Equal(t, "https://data.datadatdat.io", props["api_base_url"])
 		assert.Equal(t, "myorg", props["org"])
 		assert.Equal(t, "myrepo", props["repo"])
-		assert.Equal(t, "https", props["scheme"])
-		assert.Equal(t, "data.datadatdat.io", props["host"])
 		assert.Nil(t, props["port"])
 	}
 }
@@ -62,8 +58,6 @@ func TestFromURLSimple(t *testing.T) {
 		assert.Equal(t, "http://localhost", props["api_base_url"])
 		assert.Equal(t, "org", props["org"])
 		assert.Equal(t, "repo", props["repo"])
-		assert.Equal(t, "http", props["scheme"])
-		assert.Equal(t, "localhost", props["host"])
 		assert.Nil(t, props["port"])
 	}
 }
@@ -314,15 +308,13 @@ func TestValidateRemoteRequiredOnly(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestValidateRemoteAllProperties tests validation with all properties
+// TestValidateRemoteAllProperties tests validation with all optional properties
 func TestValidateRemoteAllProperties(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
 		"api_base_url": "http://localhost:8080",
 		"org":          "org",
 		"repo":         "repo",
-		"scheme":       "http",
-		"host":         "localhost",
 		"port":         8080,
 		"api_token":    "secret123",
 	})
