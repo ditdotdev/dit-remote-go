@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -272,10 +273,22 @@ func (p *Provider) ToURL(properties map[string]interface{}) (string, map[string]
 
 // GetParameters extracts operation parameters from remote properties.
 // This is called before each operation to get parameters like API tokens.
+// If api_token is not present in properties, it will be read from the DATADATDAT_API_KEY environment variable.
 func (p *Provider) GetParameters(remoteProperties map[string]interface{}) (map[string]interface{}, error) {
-	// For now, pass through all properties as parameters
-	// In the future, this could prompt for API tokens if not present
-	return remoteProperties, nil
+	// Create a copy of the properties to avoid modifying the original
+	params := make(map[string]interface{})
+	for k, v := range remoteProperties {
+		params[k] = v
+	}
+
+	// If api_token is not already present, try to read from environment variable
+	if _, hasToken := params["api_token"]; !hasToken {
+		if envToken := os.Getenv("DATADATDAT_API_KEY"); envToken != "" {
+			params["api_token"] = envToken
+		}
+	}
+
+	return params, nil
 }
 
 // ValidateRemote validates the remote connection properties.
