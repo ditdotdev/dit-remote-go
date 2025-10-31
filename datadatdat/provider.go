@@ -377,7 +377,7 @@ func (p *Provider) ListCommits(properties map[string]interface{}, parameters map
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Handle error responses
 	if resp.StatusCode != http.StatusOK {
@@ -421,7 +421,7 @@ func (p *Provider) GetCommit(properties map[string]interface{}, parameters map[s
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Handle 404 - commit not found
 	if resp.StatusCode == http.StatusNotFound {
