@@ -458,7 +458,7 @@ func TestListCommitsSuccess(t *testing.T) {
 		// Send response
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(listCommitsResponse{
+		_ = json.NewEncoder(w).Encode(listCommitsResponse{
 			Repo: "testrepo",
 			Commits: []commitResponse{
 				{
@@ -512,7 +512,7 @@ func TestListCommitsWithAuthentication(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(listCommitsResponse{
+		_ = json.NewEncoder(w).Encode(listCommitsResponse{
 			Repo:    "testrepo",
 			Commits: []commitResponse{},
 		})
@@ -541,7 +541,7 @@ func TestListCommitsWithTagFiltering(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(listCommitsResponse{
+		_ = json.NewEncoder(w).Encode(listCommitsResponse{
 			Repo: "testrepo",
 			Commits: []commitResponse{
 				{
@@ -586,7 +586,7 @@ func TestListCommitsWithTagFiltering(t *testing.T) {
 func TestListCommitsServerError(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal server error"))
+		_, _ = w.Write([]byte("Internal server error"))
 	})
 	server := httptest.NewServer(handler)
 	defer server.Close()
@@ -611,7 +611,7 @@ func TestListCommitsInvalidResponse(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("invalid json"))
+		_, _ = w.Write([]byte("invalid json"))
 	})
 	server := httptest.NewServer(handler)
 	defer server.Close()
@@ -639,7 +639,7 @@ func TestGetCommitSuccess(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(commitResponse{
+		_ = json.NewEncoder(w).Encode(commitResponse{
 			CommitID:  "commit123",
 			Repo:      "testrepo",
 			Timestamp: time.Now(),
@@ -676,7 +676,7 @@ func TestGetCommitSuccess(t *testing.T) {
 func TestGetCommitNotFound(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Commit not found"))
+		_, _ = w.Write([]byte("Commit not found"))
 	})
 	server := httptest.NewServer(handler)
 	defer server.Close()
@@ -703,7 +703,7 @@ func TestGetCommitWithAuthentication(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(commitResponse{
+		_ = json.NewEncoder(w).Encode(commitResponse{
 			CommitID: "commit123",
 		})
 	})
@@ -730,7 +730,7 @@ func TestGetCommitWithAuthentication(t *testing.T) {
 func TestGetCommitServerError(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Database error"))
+		_, _ = w.Write([]byte("Database error"))
 	})
 	server := httptest.NewServer(handler)
 	defer server.Close()
@@ -755,7 +755,7 @@ func TestGetCommitInvalidResponse(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("not json"))
+		_, _ = w.Write([]byte("not json"))
 	})
 	server := httptest.NewServer(handler)
 	defer server.Close()
@@ -897,7 +897,7 @@ func TestListCommitsEmpty(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(listCommitsResponse{
+		_ = json.NewEncoder(w).Encode(listCommitsResponse{
 			Repo:    "testrepo",
 			Commits: []commitResponse{},
 		})
