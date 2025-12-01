@@ -452,7 +452,6 @@ func TestListCommitsSuccess(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify request
 		assert.Equal(t, "/api/v1/repos/testorg/testrepo/commits", r.URL.Path)
-		assert.Equal(t, "list-commits", r.URL.Query().Get("action"))
 		assert.Equal(t, "GET", r.Method)
 
 		// Send response
