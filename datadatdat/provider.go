@@ -365,8 +365,8 @@ func (p *Provider) ListCommits(properties map[string]interface{}, parameters map
 		return nil, err
 	}
 
-	// Add query parameter to indicate list action
-	fullURL := apiURL + "?action=list-commits"
+	// Use the correct API endpoint format (no query parameter)
+	fullURL := apiURL
 
 	// TODO: Add tag filtering support when server implements it
 	// For now, we'll filter client-side
