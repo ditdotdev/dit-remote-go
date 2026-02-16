@@ -1042,3 +1042,226 @@ func TestDoRequestBadMethod(t *testing.T) {
 	_, err := p.doRequest(context.TODO(), "\x00", "http://localhost", nil, map[string]interface{}{})
 	assert.Error(t, err)
 }
+
+// TestParseCommitResponseMetadataDoesNotOverrideStandard tests that metadata keys
+// matching standard property names (timestamp, size, author, etc.) are not overwritten
+func TestParseCommitResponseMetadataDoesNotOverrideStandard(t *testing.T) {
+	originalTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	cr := commitResponse{
+		CommitID:  "override123",
+		Timestamp: originalTime,
+		Size:      999,
+		Author:    "real-author",
+		Message:   "real-message",
+		ParentID:  "real-parent",
+		Metadata: map[string]interface{}{
+			"timestamp": "should-not-replace",
+			"size":      0,
+			"author":    "fake-author",
+			"message":   "fake-message",
+			"parentId":  "fake-parent",
+			"custom":    "should-be-added",
+		},
+	}
+
+	commit := parseCommitResponse(cr)
+	// Standard properties must NOT be overwritten by metadata
+	assert.Equal(t, originalTime, commit.Properties["timestamp"])
+	assert.Equal(t, int64(999), commit.Properties["size"])
+	assert.Equal(t, "real-author", commit.Properties["author"])
+	assert.Equal(t, "real-message", commit.Properties["message"])
+	assert.Equal(t, "real-parent", commit.Properties["parentId"])
+	// Custom metadata field should still be added
+	assert.Equal(t, "should-be-added", commit.Properties["custom"])
+}
+
+// TestGetParametersExplicitTokenTakesPrecedenceOverEnv tests that an explicit api_token
+// in properties is not overwritten by the DATADATDAT_API_KEY env var
+func TestGetParametersExplicitTokenTakesPrecedenceOverEnv(t *testing.T) {
+	r := remote.Get("datadatdat")
+	_ = os.Setenv("DATADATDAT_API_KEY", "env-token")
+	defer func() { _ = os.Unsetenv("DATADATDAT_API_KEY") }()
+
+	props, err := r.GetParameters(map[string]interface{}{
+		"api_base_url": "http://localhost",
+		"org":          "org",
+		"repo":         "repo",
+		"api_token":    "explicit-token",
+	})
+	if assert.NoError(t, err) {
+		assert.Equal(t, "explicit-token", props["api_token"])
+	}
+}
+
+// TestGetParametersNoEnvNoToken tests that api_token is absent when neither
+// explicitly set nor available via environment variable
+func TestGetParametersNoEnvNoToken(t *testing.T) {
+	r := remote.Get("datadatdat")
+	_ = os.Unsetenv("DATADATDAT_API_KEY")
+
+	props, err := r.GetParameters(map[string]interface{}{
+		"api_base_url": "http://localhost",
+		"org":          "org",
+		"repo":         "repo",
+	})
+	if assert.NoError(t, err) {
+		_, hasToken := props["api_token"]
+		assert.False(t, hasToken)
+	}
+}
+
+// TestToURLExcludesNonStringProperties tests that non-string properties
+// (like port as int) are silently excluded from additional properties
+func TestToURLExcludesNonStringProperties(t *testing.T) {
+	r := remote.Get("datadatdat")
+
+	u, props, err := r.ToURL(map[string]interface{}{
+		"api_base_url": "http://localhost",
+		"org":          "org",
+		"repo":         "repo",
+		"port":         8080,          // int - system prop, excluded
+		"api_token":    "secret",      // string - should be in additional
+	})
+	if assert.NoError(t, err) {
+		assert.Equal(t, "http://localhost/org/repo", u)
+		assert.Len(t, props, 1)
+		assert.Equal(t, "secret", props["api_token"])
+		// port should not appear in additional properties
+		_, hasPort := props["port"]
+		assert.False(t, hasPort)
+	}
+}
+
+// TestFromURLPortZero tests that port 0 is rejected
+func TestFromURLPortZero(t *testing.T) {
+	r := remote.Get("datadatdat")
+	_, err := r.FromURL("http://host:0/org/repo", map[string]string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "0")
+}
+
+// TestFromURLPortMax tests that port 65535 is accepted
+func TestFromURLPortMax(t *testing.T) {
+	r := remote.Get("datadatdat")
+	props, err := r.FromURL("http://host:65535/org/repo", map[string]string{})
+	if assert.NoError(t, err) {
+		assert.Equal(t, 65535, props["port"])
+	}
+}
+
+// TestValidateRemotePortZero tests that port 0 is rejected in validation
+func TestValidateRemotePortZero(t *testing.T) {
+	r := remote.Get("datadatdat")
+	err := r.ValidateRemote(map[string]interface{}{
+		"api_base_url": "http://localhost",
+		"org":          "org",
+		"repo":         "repo",
+		"port":         0,
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "0")
+}
+
+// TestValidateRemotePortMax tests that port 65535 is accepted in validation
+func TestValidateRemotePortMax(t *testing.T) {
+	r := remote.Get("datadatdat")
+	err := r.ValidateRemote(map[string]interface{}{
+		"api_base_url": "http://localhost",
+		"org":          "org",
+		"repo":         "repo",
+		"port":         65535,
+	})
+	assert.NoError(t, err)
+}
+
+// TestValidateRemotePortOverMax tests that port 65536 is rejected in validation
+func TestValidateRemotePortOverMax(t *testing.T) {
+	r := remote.Get("datadatdat")
+	err := r.ValidateRemote(map[string]interface{}{
+		"api_base_url": "http://localhost",
+		"org":          "org",
+		"repo":         "repo",
+		"port":         65536,
+	})
+	assert.Error(t, err)
+}
+
+// TestParseCommitResponseTagsWithMultipleColons tests that tags with multiple
+// colons are parsed correctly using SplitN (only splits on first colon)
+func TestParseCommitResponseTagsWithMultipleColons(t *testing.T) {
+	cr := commitResponse{
+		CommitID:  "colons123",
+		Timestamp: time.Now(),
+		Size:      100,
+		Tags:      []string{"key:value:with:colons", "simple:value"},
+	}
+
+	commit := parseCommitResponse(cr)
+	tagsMap, ok := commit.Properties["tags"].(map[string]string)
+	assert.True(t, ok)
+	assert.Equal(t, "value:with:colons", tagsMap["key"])
+	assert.Equal(t, "value", tagsMap["simple"])
+}
+
+// TestParseCommitResponseMetadataDoesNotOverrideTags tests that metadata
+// with a "tags" key does not overwrite parsed tags
+func TestParseCommitResponseMetadataDoesNotOverrideTags(t *testing.T) {
+	cr := commitResponse{
+		CommitID:  "tagsafe123",
+		Timestamp: time.Now(),
+		Size:      100,
+		Tags:      []string{"env:prod"},
+		Metadata: map[string]interface{}{
+			"tags": "should-not-replace",
+		},
+	}
+
+	commit := parseCommitResponse(cr)
+	tagsMap, ok := commit.Properties["tags"].(map[string]string)
+	assert.True(t, ok)
+	assert.Equal(t, "prod", tagsMap["env"])
+}
+
+// TestDoRequestNoAuthWhenTokenEmpty tests that empty api_token does not
+// add an Authorization header
+func TestDoRequestNoAuthWhenTokenEmpty(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Empty(t, r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusOK)
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	p := NewProvider()
+	resp, err := p.doRequest(context.Background(), http.MethodGet, server.URL, nil, map[string]interface{}{
+		"api_token": "",
+	})
+	assert.NoError(t, err)
+	_ = resp.Body.Close()
+}
+
+// TestDoRequestNoAuthWhenTokenAbsent tests that missing api_token does not
+// add an Authorization header
+func TestDoRequestNoAuthWhenTokenAbsent(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Empty(t, r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusOK)
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	p := NewProvider()
+	resp, err := p.doRequest(context.Background(), http.MethodGet, server.URL, nil, map[string]interface{}{})
+	assert.NoError(t, err)
+	_ = resp.Body.Close()
+}
+
+// TestGetHTTPClientLazyInit tests that getHTTPClient creates a client if nil
+func TestGetHTTPClientLazyInit(t *testing.T) {
+	p := &Provider{httpClient: nil}
+	client := p.getHTTPClient()
+	assert.NotNil(t, client)
+	assert.Equal(t, 30*time.Second, client.Timeout)
+	// Second call should return the same client
+	assert.Same(t, client, p.getHTTPClient())
+}
