@@ -4,6 +4,7 @@
 package datadatdat
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -1038,6 +1039,6 @@ func TestMatchesTagsValueMismatch(t *testing.T) {
 // TestDoRequestBadMethod tests doRequest with invalid HTTP method
 func TestDoRequestBadMethod(t *testing.T) {
 	p := NewProvider()
-	_, err := p.doRequest(nil, "\x00", "http://localhost", nil, map[string]interface{}{})
+	_, err := p.doRequest(context.TODO(), "\x00", "http://localhost", nil, map[string]interface{}{})
 	assert.Error(t, err)
 }
