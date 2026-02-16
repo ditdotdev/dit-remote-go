@@ -97,7 +97,7 @@ func (p *Provider) doRequest(ctx context.Context, method, url string, body io.Re
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiToken))
 	}
 
-	resp, err := p.getHTTPClient().Do(req)
+	resp, err := p.getHTTPClient().Do(req) // #nosec G704 -- URL is constructed from user-configured remote properties; SSRF is by design for a remote provider
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
