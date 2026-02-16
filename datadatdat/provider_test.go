@@ -1119,8 +1119,8 @@ func TestToURLExcludesNonStringProperties(t *testing.T) {
 		"api_base_url": "http://localhost",
 		"org":          "org",
 		"repo":         "repo",
-		"port":         8080,          // int - system prop, excluded
-		"api_token":    "secret",      // string - should be in additional
+		"port":         8080,     // int - system prop, excluded
+		"api_token":    "secret", // string - should be in additional
 	})
 	if assert.NoError(t, err) {
 		assert.Equal(t, "http://localhost/org/repo", u)
