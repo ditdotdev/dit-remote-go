@@ -4,9 +4,11 @@
 package datadatdat
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -951,4 +953,92 @@ func TestGetCommitBadProperties(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "api_base_url")
+}
+
+// TestFromURLPortOutOfRange tests port that parses but exceeds 65535
+func TestFromURLPortOutOfRange(t *testing.T) {
+	r := remote.Get("datadatdat")
+	_, err := r.FromURL("http://host:70000/org/repo", map[string]string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "70000")
+}
+
+// TestGetParametersEnvFallback tests api_token from DATADATDAT_API_KEY env var
+func TestGetParametersEnvFallback(t *testing.T) {
+	r := remote.Get("datadatdat")
+	_ = os.Setenv("DATADATDAT_API_KEY", "env-token-123")
+	defer func() { _ = os.Unsetenv("DATADATDAT_API_KEY") }()
+
+	props, err := r.GetParameters(map[string]interface{}{
+		"api_base_url": "http://localhost",
+		"org":          "org",
+		"repo":         "repo",
+	})
+	if assert.NoError(t, err) {
+		assert.Equal(t, "env-token-123", props["api_token"])
+	}
+}
+
+// TestListCommitsConnectionError tests HTTP connection failure
+func TestListCommitsConnectionError(t *testing.T) {
+	r := remote.Get("datadatdat")
+	_, err := r.ListCommits(
+		map[string]interface{}{
+			"api_base_url": "http://127.0.0.1:1",
+			"org":          "testorg",
+			"repo":         "testrepo",
+		},
+		map[string]interface{}{},
+		[]remote.Tag{},
+	)
+	assert.Error(t, err)
+}
+
+// TestGetCommitConnectionError tests HTTP connection failure for GetCommit
+func TestGetCommitConnectionError(t *testing.T) {
+	r := remote.Get("datadatdat")
+	_, err := r.GetCommit(
+		map[string]interface{}{
+			"api_base_url": "http://127.0.0.1:1",
+			"org":          "testorg",
+			"repo":         "testrepo",
+		},
+		map[string]interface{}{},
+		"commit123",
+	)
+	assert.Error(t, err)
+}
+
+// TestMatchesTagsMissingKey tests when commit tags don't have the filter key
+func TestMatchesTagsMissingKey(t *testing.T) {
+	commit := remote.Commit{
+		ID: "commit1",
+		Properties: map[string]interface{}{
+			"tags": map[string]string{
+				"env": "prod",
+			},
+		},
+	}
+	assert.False(t, matchesTags(commit, []remote.Tag{{Key: "missing", Value: nil}}))
+}
+
+// TestMatchesTagsValueMismatch tests when tag value doesn't match
+func TestMatchesTagsValueMismatch(t *testing.T) {
+	commit := remote.Commit{
+		ID: "commit1",
+		Properties: map[string]interface{}{
+			"tags": map[string]string{
+				"env": "prod",
+			},
+		},
+	}
+	dev := "dev"
+	assert.False(t, matchesTags(commit, []remote.Tag{{Key: "env", Value: &dev}}))
+}
+
+// TestDoRequestBadMethod tests doRequest with invalid HTTP method
+func TestDoRequestBadMethod(t *testing.T) {
+	p := NewProvider()
+	_, err := p.doRequest(context.TODO(), "\x00", "http://localhost", nil, map[string]interface{}{})
+	assert.Error(t, err)
 }
