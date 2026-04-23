@@ -1,6 +1,6 @@
 module github.com/datadatdat/datadatdat-remote-go
 
-go 1.25.1
+go 1.26.2
 
 require (
 	github.com/datadatdat/remote-sdk-go v1.8.7
