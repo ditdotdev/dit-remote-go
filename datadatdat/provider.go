@@ -208,8 +208,8 @@ func (p *Provider) FromURL(rawURL string, additionalProperties map[string]string
 
 	properties := map[string]interface{}{
 		propAPIBaseURL: apiBaseURL,
-		propOrg:          org,
-		propRepo:         repo,
+		propOrg:        org,
+		propRepo:       repo,
 	}
 
 	// Add port if present
@@ -263,9 +263,9 @@ func (p *Provider) ToURL(properties map[string]interface{}) (string, map[string]
 	additionalProps := make(map[string]string)
 	systemProps := map[string]bool{
 		propAPIBaseURL: true,
-		propOrg:          true,
-		propRepo:         true,
-		propPort:         true,
+		propOrg:        true,
+		propRepo:       true,
+		propPort:       true,
 	}
 
 	for k, v := range properties {
@@ -311,10 +311,10 @@ func (p *Provider) ValidateRemote(properties map[string]interface{}) error {
 	// Validate allowed properties (must match what the Kotlin server accepts)
 	allowedProps := map[string]bool{
 		propAPIBaseURL: true,
-		propOrg:          true,
-		propRepo:         true,
-		propPort:         true,
-		propAPIToken:    true,
+		propOrg:        true,
+		propRepo:       true,
+		propPort:       true,
+		propAPIToken:   true,
 	}
 
 	for k := range properties {
@@ -349,11 +349,11 @@ func (p *Provider) ValidateRemote(properties map[string]interface{}) error {
 func (p *Provider) ValidateParameters(parameters map[string]interface{}) error {
 	// Validate allowed parameters (must match what the Kotlin server accepts)
 	allowedParams := map[string]bool{
-		propAPIToken:    true,
+		propAPIToken:   true,
 		propAPIBaseURL: true,
-		propOrg:          true,
-		propRepo:         true,
-		propPort:         true,
+		propOrg:        true,
+		propRepo:       true,
+		propPort:       true,
 	}
 
 	for k := range parameters {
