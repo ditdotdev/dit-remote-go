@@ -17,6 +17,14 @@ import (
 	"github.com/datadatdat/remote-sdk-go/remote"
 )
 
+const (
+	propAPIBaseURL = "api_base_url"
+	propOrg        = "org"
+	propRepo       = "repo"
+	propAPIToken   = "api_token"
+	propPort       = "port"
+)
+
 // Provider implements the remote.Remote interface for datadatdat-remote-server.
 type Provider struct {
 	httpClient *http.Client
@@ -63,17 +71,17 @@ func NewProvider() *Provider {
 
 // buildAPIURL constructs the full API URL for a given path
 func (p *Provider) buildAPIURL(properties map[string]interface{}, path string) (string, error) {
-	apiBaseURL, ok := properties["api_base_url"].(string)
+	apiBaseURL, ok := properties[propAPIBaseURL].(string)
 	if !ok {
 		return "", fmt.Errorf("missing or invalid api_base_url property")
 	}
 
-	org, ok := properties["org"].(string)
+	org, ok := properties[propOrg].(string)
 	if !ok {
 		return "", fmt.Errorf("missing or invalid org property")
 	}
 
-	repo, ok := properties["repo"].(string)
+	repo, ok := properties[propRepo].(string)
 	if !ok {
 		return "", fmt.Errorf("missing or invalid repo property")
 	}
@@ -93,7 +101,7 @@ func (p *Provider) doRequest(ctx context.Context, method, url string, body io.Re
 	req.Header.Set("Content-Type", "application/json")
 
 	// Add Bearer token if present
-	if apiToken, ok := parameters["api_token"].(string); ok && apiToken != "" {
+	if apiToken, ok := parameters[propAPIToken].(string); ok && apiToken != "" {
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiToken))
 	}
 
@@ -199,9 +207,9 @@ func (p *Provider) FromURL(rawURL string, additionalProperties map[string]string
 	portStr := parsedURL.Port()
 
 	properties := map[string]interface{}{
-		"api_base_url": apiBaseURL,
-		"org":          org,
-		"repo":         repo,
+		propAPIBaseURL: apiBaseURL,
+		propOrg:          org,
+		propRepo:         repo,
 	}
 
 	// Add port if present
@@ -214,12 +222,12 @@ func (p *Provider) FromURL(rawURL string, additionalProperties map[string]string
 		if port < 1 || port > 65535 {
 			return nil, fmt.Errorf("invalid port: %d (must be between 1 and 65535)", port)
 		}
-		properties["port"] = port
+		properties[propPort] = port
 	}
 
 	// Validate and add additional properties (only api_token is allowed)
 	allowedProps := map[string]bool{
-		"api_token": true,
+		propAPIToken: true,
 	}
 	for k, v := range additionalProperties {
 		if !allowedProps[k] {
@@ -233,17 +241,17 @@ func (p *Provider) FromURL(rawURL string, additionalProperties map[string]string
 
 // ToURL converts remote properties back to a URL and additional properties.
 func (p *Provider) ToURL(properties map[string]interface{}) (string, map[string]string, error) {
-	apiBaseURL, ok := properties["api_base_url"].(string)
+	apiBaseURL, ok := properties[propAPIBaseURL].(string)
 	if !ok {
 		return "", nil, fmt.Errorf("missing api_base_url property")
 	}
 
-	org, ok := properties["org"].(string)
+	org, ok := properties[propOrg].(string)
 	if !ok {
 		return "", nil, fmt.Errorf("missing org property")
 	}
 
-	repo, ok := properties["repo"].(string)
+	repo, ok := properties[propRepo].(string)
 	if !ok {
 		return "", nil, fmt.Errorf("missing repo property")
 	}
@@ -254,10 +262,10 @@ func (p *Provider) ToURL(properties map[string]interface{}) (string, map[string]
 	// Extract additional properties (excluding system properties)
 	additionalProps := make(map[string]string)
 	systemProps := map[string]bool{
-		"api_base_url": true,
-		"org":          true,
-		"repo":         true,
-		"port":         true,
+		propAPIBaseURL: true,
+		propOrg:          true,
+		propRepo:         true,
+		propPort:         true,
 	}
 
 	for k, v := range properties {
@@ -282,9 +290,9 @@ func (p *Provider) GetParameters(remoteProperties map[string]interface{}) (map[s
 	}
 
 	// If api_token is not already present, try to read from environment variable
-	if _, hasToken := params["api_token"]; !hasToken {
+	if _, hasToken := params[propAPIToken]; !hasToken {
 		if envToken := os.Getenv("DATADATDAT_API_KEY"); envToken != "" {
-			params["api_token"] = envToken
+			params[propAPIToken] = envToken
 		}
 	}
 
@@ -293,7 +301,7 @@ func (p *Provider) GetParameters(remoteProperties map[string]interface{}) (map[s
 
 // ValidateRemote validates the remote connection properties.
 func (p *Provider) ValidateRemote(properties map[string]interface{}) error {
-	requiredProps := []string{"api_base_url", "org", "repo"}
+	requiredProps := []string{propAPIBaseURL, propOrg, propRepo}
 	for _, prop := range requiredProps {
 		if _, ok := properties[prop]; !ok {
 			return fmt.Errorf("missing required property: %s", prop)
@@ -302,11 +310,11 @@ func (p *Provider) ValidateRemote(properties map[string]interface{}) error {
 
 	// Validate allowed properties (must match what the Kotlin server accepts)
 	allowedProps := map[string]bool{
-		"api_base_url": true,
-		"org":          true,
-		"repo":         true,
-		"port":         true,
-		"api_token":    true,
+		propAPIBaseURL: true,
+		propOrg:          true,
+		propRepo:         true,
+		propPort:         true,
+		propAPIToken:    true,
 	}
 
 	for k := range properties {
@@ -316,7 +324,7 @@ func (p *Provider) ValidateRemote(properties map[string]interface{}) error {
 	}
 
 	// Validate port if present
-	if port, ok := properties["port"]; ok {
+	if port, ok := properties[propPort]; ok {
 		portInt := 0
 		switch v := port.(type) {
 		case int:
@@ -341,11 +349,11 @@ func (p *Provider) ValidateRemote(properties map[string]interface{}) error {
 func (p *Provider) ValidateParameters(parameters map[string]interface{}) error {
 	// Validate allowed parameters (must match what the Kotlin server accepts)
 	allowedParams := map[string]bool{
-		"api_token":    true,
-		"api_base_url": true,
-		"org":          true,
-		"repo":         true,
-		"port":         true,
+		propAPIToken:    true,
+		propAPIBaseURL: true,
+		propOrg:          true,
+		propRepo:         true,
+		propPort:         true,
 	}
 
 	for k := range parameters {
