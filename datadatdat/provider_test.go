@@ -16,6 +16,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	testBar       = "bar"
+	testLocalhost = "http://localhost"
+	testRepoName  = "testrepo"
+	testOrgName   = "testorg"
+	testCommit1   = "commit1"
+	testEnvProd   = "env:prod"
+	testProd      = "prod"
+	testEnv       = "env"
+	testTags      = "tags"
+	testSecret    = "secret123"
+	testFoo       = "foo"
+	testVersion10 = "version:1.0"
+)
+
 func TestRegistered(t *testing.T) {
 	r := remote.Get("datadatdat")
 
@@ -31,10 +46,10 @@ func TestFromURL(t *testing.T) {
 
 	props, err := r.FromURL("http://data.datadatdat.io:8080/myorg/myrepo", map[string]string{})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "http://data.datadatdat.io:8080", props["api_base_url"])
-		assert.Equal(t, "myorg", props["org"])
-		assert.Equal(t, "myrepo", props["repo"])
-		assert.Equal(t, 8080, props["port"])
+		assert.Equal(t, "http://data.datadatdat.io:8080", props[propAPIBaseURL])
+		assert.Equal(t, "myorg", props[propOrg])
+		assert.Equal(t, "myrepo", props[propRepo])
+		assert.Equal(t, 8080, props[propPort])
 	}
 }
 
@@ -44,10 +59,10 @@ func TestFromURLHTTPS(t *testing.T) {
 
 	props, err := r.FromURL("https://data.datadatdat.io/myorg/myrepo", map[string]string{})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "https://data.datadatdat.io", props["api_base_url"])
-		assert.Equal(t, "myorg", props["org"])
-		assert.Equal(t, "myrepo", props["repo"])
-		assert.Nil(t, props["port"])
+		assert.Equal(t, "https://data.datadatdat.io", props[propAPIBaseURL])
+		assert.Equal(t, "myorg", props[propOrg])
+		assert.Equal(t, "myrepo", props[propRepo])
+		assert.Nil(t, props[propPort])
 	}
 }
 
@@ -57,10 +72,10 @@ func TestFromURLSimple(t *testing.T) {
 
 	props, err := r.FromURL("http://localhost/org/repo", map[string]string{})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "http://localhost", props["api_base_url"])
-		assert.Equal(t, "org", props["org"])
-		assert.Equal(t, "repo", props["repo"])
-		assert.Nil(t, props["port"])
+		assert.Equal(t, testLocalhost, props[propAPIBaseURL])
+		assert.Equal(t, propOrg, props[propOrg])
+		assert.Equal(t, propRepo, props[propRepo])
+		assert.Nil(t, props[propPort])
 	}
 }
 
@@ -68,9 +83,9 @@ func TestFromURLSimple(t *testing.T) {
 func TestFromURLWithAPIToken(t *testing.T) {
 	r := remote.Get("datadatdat")
 
-	props, err := r.FromURL("http://localhost/org/repo", map[string]string{"api_token": "secret123"})
+	props, err := r.FromURL("http://localhost/org/repo", map[string]string{propAPIToken: testSecret})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "secret123", props["api_token"])
+		assert.Equal(t, testSecret, props[propAPIToken])
 	}
 }
 
@@ -98,7 +113,7 @@ func TestBadSchemeFTP(t *testing.T) {
 // TestBadProperty tests rejection of unknown properties
 func TestBadProperty(t *testing.T) {
 	r := remote.Get("datadatdat")
-	_, err := r.FromURL("http://host/org/repo", map[string]string{"foo": "bar"})
+	_, err := r.FromURL("http://host/org/repo", map[string]string{testFoo: testBar})
 	assert.Error(t, err)
 }
 
@@ -163,9 +178,9 @@ func TestToURL(t *testing.T) {
 	r := remote.Get("datadatdat")
 
 	u, props, err := r.ToURL(map[string]interface{}{
-		"api_base_url": "http://localhost:8080",
-		"org":          "myorg",
-		"repo":         "myrepo",
+		propAPIBaseURL: "http://localhost:8080",
+		propOrg:        "myorg",
+		propRepo:       "myrepo",
 	})
 	if assert.NoError(t, err) {
 		assert.Equal(t, "http://localhost:8080/myorg/myrepo", u)
@@ -178,9 +193,9 @@ func TestToURLHTTPS(t *testing.T) {
 	r := remote.Get("datadatdat")
 
 	u, props, err := r.ToURL(map[string]interface{}{
-		"api_base_url": "https://data.datadatdat.io",
-		"org":          "myorg",
-		"repo":         "myrepo",
+		propAPIBaseURL: "https://data.datadatdat.io",
+		propOrg:        "myorg",
+		propRepo:       "myrepo",
 	})
 	if assert.NoError(t, err) {
 		assert.Equal(t, "https://data.datadatdat.io/myorg/myrepo", u)
@@ -193,15 +208,15 @@ func TestToURLWithToken(t *testing.T) {
 	r := remote.Get("datadatdat")
 
 	u, props, err := r.ToURL(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
-		"api_token":    "secret123",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		propAPIToken:   testSecret,
 	})
 	if assert.NoError(t, err) {
 		assert.Equal(t, "http://localhost/org/repo", u)
 		assert.Len(t, props, 1)
-		assert.Equal(t, "secret123", props["api_token"])
+		assert.Equal(t, testSecret, props[propAPIToken])
 	}
 }
 
@@ -209,8 +224,8 @@ func TestToURLWithToken(t *testing.T) {
 func TestToURLMissingAPIBaseURL(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, _, err := r.ToURL(map[string]interface{}{
-		"org":  "org",
-		"repo": "repo",
+		propOrg:  propOrg,
+		propRepo: propRepo,
 	})
 	assert.Error(t, err)
 }
@@ -219,8 +234,8 @@ func TestToURLMissingAPIBaseURL(t *testing.T) {
 func TestToURLMissingOrg(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, _, err := r.ToURL(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"repo":         "repo",
+		propAPIBaseURL: testLocalhost,
+		propRepo:       propRepo,
 	})
 	assert.Error(t, err)
 }
@@ -229,8 +244,8 @@ func TestToURLMissingOrg(t *testing.T) {
 func TestToURLMissingRepo(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, _, err := r.ToURL(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
 	})
 	assert.Error(t, err)
 }
@@ -239,9 +254,9 @@ func TestToURLMissingRepo(t *testing.T) {
 func TestToURLBadAPIBaseURLType(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, _, err := r.ToURL(map[string]interface{}{
-		"api_base_url": 123,
-		"org":          "org",
-		"repo":         "repo",
+		propAPIBaseURL: 123,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
 	})
 	assert.Error(t, err)
 }
@@ -250,9 +265,9 @@ func TestToURLBadAPIBaseURLType(t *testing.T) {
 func TestToURLBadOrgType(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, _, err := r.ToURL(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          123,
-		"repo":         "repo",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        123,
+		propRepo:       propRepo,
 	})
 	assert.Error(t, err)
 }
@@ -261,9 +276,9 @@ func TestToURLBadOrgType(t *testing.T) {
 func TestToURLBadRepoType(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, _, err := r.ToURL(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         123,
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       123,
 	})
 	assert.Error(t, err)
 }
@@ -273,14 +288,14 @@ func TestGetParameters(t *testing.T) {
 	r := remote.Get("datadatdat")
 
 	props, err := r.GetParameters(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
 	})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "http://localhost", props["api_base_url"])
-		assert.Equal(t, "org", props["org"])
-		assert.Equal(t, "repo", props["repo"])
+		assert.Equal(t, testLocalhost, props[propAPIBaseURL])
+		assert.Equal(t, propOrg, props[propOrg])
+		assert.Equal(t, propRepo, props[propRepo])
 	}
 }
 
@@ -289,13 +304,13 @@ func TestGetParametersWithToken(t *testing.T) {
 	r := remote.Get("datadatdat")
 
 	props, err := r.GetParameters(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
-		"api_token":    "secret123",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		propAPIToken:   testSecret,
 	})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "secret123", props["api_token"])
+		assert.Equal(t, testSecret, props[propAPIToken])
 	}
 }
 
@@ -303,9 +318,9 @@ func TestGetParametersWithToken(t *testing.T) {
 func TestValidateRemoteRequiredOnly(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
 	})
 	assert.NoError(t, err)
 }
@@ -314,11 +329,11 @@ func TestValidateRemoteRequiredOnly(t *testing.T) {
 func TestValidateRemoteAllProperties(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
-		"api_base_url": "http://localhost:8080",
-		"org":          "org",
-		"repo":         "repo",
-		"port":         8080,
-		"api_token":    "secret123",
+		propAPIBaseURL: "http://localhost:8080",
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		propPort:       8080,
+		propAPIToken:   testSecret,
 	})
 	assert.NoError(t, err)
 }
@@ -327,56 +342,56 @@ func TestValidateRemoteAllProperties(t *testing.T) {
 func TestValidateRemoteMissingAPIBaseURL(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
-		"org":  "org",
-		"repo": "repo",
+		propOrg:  propOrg,
+		propRepo: propRepo,
 	})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "api_base_url")
+	assert.Contains(t, err.Error(), propAPIBaseURL)
 }
 
 // TestValidateRemoteMissingOrg tests error when org is missing
 func TestValidateRemoteMissingOrg(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"repo":         "repo",
+		propAPIBaseURL: testLocalhost,
+		propRepo:       propRepo,
 	})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "org")
+	assert.Contains(t, err.Error(), propOrg)
 }
 
 // TestValidateRemoteMissingRepo tests error when repo is missing
 func TestValidateRemoteMissingRepo(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
 	})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "repo")
+	assert.Contains(t, err.Error(), propRepo)
 }
 
 // TestValidateRemoteExtraProperty tests error with unknown property
 func TestValidateRemoteExtraProperty(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
-		"foo":          "bar",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		testFoo:        testBar,
 	})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "foo")
+	assert.Contains(t, err.Error(), testFoo)
 }
 
 // TestValidateRemoteBadPortType tests error when port is wrong type
 func TestValidateRemoteBadPortType(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
-		"port":         "not_a_number",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		propPort:       "not_a_number",
 	})
 	assert.Error(t, err)
 }
@@ -385,10 +400,10 @@ func TestValidateRemoteBadPortType(t *testing.T) {
 func TestValidateRemoteBadPortNegative(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
-		"port":         -1,
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		propPort:       -1,
 	})
 	assert.Error(t, err)
 }
@@ -397,10 +412,10 @@ func TestValidateRemoteBadPortNegative(t *testing.T) {
 func TestValidateRemotePortFloat(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
-		"port":         8080.0,
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		propPort:       8080.0,
 	})
 	assert.NoError(t, err)
 }
@@ -412,10 +427,10 @@ func TestValidateRemotePortFloat32(t *testing.T) {
 	var p float32 = 8080.0
 
 	err := r.ValidateRemote(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
-		"port":         p,
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		propPort:       p,
 	})
 	assert.NoError(t, err)
 }
@@ -431,7 +446,7 @@ func TestValidateParametersEmpty(t *testing.T) {
 func TestValidateParametersWithToken(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateParameters(map[string]interface{}{
-		"api_token": "secret123",
+		propAPIToken: testSecret,
 	})
 	assert.NoError(t, err)
 }
@@ -440,10 +455,10 @@ func TestValidateParametersWithToken(t *testing.T) {
 func TestValidateParametersUnknown(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateParameters(map[string]interface{}{
-		"foo": "bar",
+		testFoo: testBar,
 	})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "foo")
+	assert.Contains(t, err.Error(), testFoo)
 }
 
 // HTTP Tests with mock server
@@ -460,11 +475,11 @@ func TestListCommitsSuccess(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(listCommitsResponse{
-			Repo: "testrepo",
+			Repo: testRepoName,
 			Commits: []commitResponse{
 				{
-					CommitID:  "commit1",
-					Repo:      "testrepo",
+					CommitID:  testCommit1,
+					Repo:      testRepoName,
 					Timestamp: time.Now(),
 					Size:      1024,
 					Author:    "user1",
@@ -472,12 +487,12 @@ func TestListCommitsSuccess(t *testing.T) {
 				},
 				{
 					CommitID:  "commit2",
-					Repo:      "testrepo",
+					Repo:      testRepoName,
 					Timestamp: time.Now().Add(-1 * time.Hour),
 					Size:      2048,
 					Author:    "user2",
 					Message:   "Second commit",
-					Tags:      []string{"env:prod", "version:1.0"},
+					Tags:      []string{testEnvProd, testVersion10},
 				},
 			},
 		})
@@ -489,9 +504,9 @@ func TestListCommitsSuccess(t *testing.T) {
 	r := remote.Get("datadatdat")
 	commits, err := r.ListCommits(
 		map[string]interface{}{
-			"api_base_url": server.URL,
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: server.URL,
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{},
 		[]remote.Tag{},
@@ -499,7 +514,7 @@ func TestListCommitsSuccess(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, commits, 2)
-	assert.Equal(t, "commit1", commits[0].ID)
+	assert.Equal(t, testCommit1, commits[0].ID)
 	assert.Equal(t, "commit2", commits[1].ID)
 	assert.Equal(t, "user1", commits[0].Properties["author"])
 	assert.Equal(t, "Second commit", commits[1].Properties["message"])
@@ -514,7 +529,7 @@ func TestListCommitsWithAuthentication(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(listCommitsResponse{
-			Repo:    "testrepo",
+			Repo:    testRepoName,
 			Commits: []commitResponse{},
 		})
 	})
@@ -524,12 +539,12 @@ func TestListCommitsWithAuthentication(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, err := r.ListCommits(
 		map[string]interface{}{
-			"api_base_url": server.URL,
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: server.URL,
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{
-			"api_token": "secret123",
+			propAPIToken: testSecret,
 		},
 		[]remote.Tag{},
 	)
@@ -543,19 +558,19 @@ func TestListCommitsWithTagFiltering(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(listCommitsResponse{
-			Repo: "testrepo",
+			Repo: testRepoName,
 			Commits: []commitResponse{
 				{
-					CommitID: "commit1",
-					Tags:     []string{"env:prod", "version:1.0"},
+					CommitID: testCommit1,
+					Tags:     []string{testEnvProd, testVersion10},
 				},
 				{
 					CommitID: "commit2",
-					Tags:     []string{"env:dev", "version:1.0"},
+					Tags:     []string{"env:dev", testVersion10},
 				},
 				{
 					CommitID: "commit3",
-					Tags:     []string{"env:prod", "version:2.0"},
+					Tags:     []string{testEnvProd, "version:2.0"},
 				},
 			},
 		})
@@ -566,20 +581,20 @@ func TestListCommitsWithTagFiltering(t *testing.T) {
 	r := remote.Get("datadatdat")
 
 	// Filter for env:prod
-	envProd := "prod"
+	envProd := testProd
 	commits, err := r.ListCommits(
 		map[string]interface{}{
-			"api_base_url": server.URL,
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: server.URL,
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{},
-		[]remote.Tag{{Key: "env", Value: &envProd}},
+		[]remote.Tag{{Key: testEnv, Value: &envProd}},
 	)
 
 	assert.NoError(t, err)
 	assert.Len(t, commits, 2)
-	assert.Equal(t, "commit1", commits[0].ID)
+	assert.Equal(t, testCommit1, commits[0].ID)
 	assert.Equal(t, "commit3", commits[1].ID)
 }
 
@@ -595,9 +610,9 @@ func TestListCommitsServerError(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, err := r.ListCommits(
 		map[string]interface{}{
-			"api_base_url": server.URL,
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: server.URL,
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{},
 		[]remote.Tag{},
@@ -620,9 +635,9 @@ func TestListCommitsInvalidResponse(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, err := r.ListCommits(
 		map[string]interface{}{
-			"api_base_url": server.URL,
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: server.URL,
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{},
 		[]remote.Tag{},
@@ -642,7 +657,7 @@ func TestGetCommitSuccess(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(commitResponse{
 			CommitID:  "commit123",
-			Repo:      "testrepo",
+			Repo:      testRepoName,
 			Timestamp: time.Now(),
 			Size:      1024,
 			Author:    "testuser",
@@ -657,9 +672,9 @@ func TestGetCommitSuccess(t *testing.T) {
 	r := remote.Get("datadatdat")
 	commit, err := r.GetCommit(
 		map[string]interface{}{
-			"api_base_url": server.URL,
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: server.URL,
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{},
 		"commit123",
@@ -685,9 +700,9 @@ func TestGetCommitNotFound(t *testing.T) {
 	r := remote.Get("datadatdat")
 	commit, err := r.GetCommit(
 		map[string]interface{}{
-			"api_base_url": server.URL,
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: server.URL,
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{},
 		"nonexistent",
@@ -714,12 +729,12 @@ func TestGetCommitWithAuthentication(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, err := r.GetCommit(
 		map[string]interface{}{
-			"api_base_url": server.URL,
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: server.URL,
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{
-			"api_token": "mytoken",
+			propAPIToken: "mytoken",
 		},
 		"commit123",
 	)
@@ -739,9 +754,9 @@ func TestGetCommitServerError(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, err := r.GetCommit(
 		map[string]interface{}{
-			"api_base_url": server.URL,
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: server.URL,
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{},
 		"commit123",
@@ -764,9 +779,9 @@ func TestGetCommitInvalidResponse(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, err := r.GetCommit(
 		map[string]interface{}{
-			"api_base_url": server.URL,
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: server.URL,
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{},
 		"commit123",
@@ -782,27 +797,27 @@ func TestBuildAPIURLMissingProperties(t *testing.T) {
 
 	// Missing api_base_url
 	_, err := p.buildAPIURL(map[string]interface{}{
-		"org":  "testorg",
-		"repo": "testrepo",
+		propOrg:  testOrgName,
+		propRepo: testRepoName,
 	}, "/commits")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "api_base_url")
+	assert.Contains(t, err.Error(), propAPIBaseURL)
 
 	// Missing org
 	_, err = p.buildAPIURL(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"repo":         "testrepo",
+		propAPIBaseURL: testLocalhost,
+		propRepo:       testRepoName,
 	}, "/commits")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "org")
+	assert.Contains(t, err.Error(), propOrg)
 
 	// Missing repo
 	_, err = p.buildAPIURL(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "testorg",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        testOrgName,
 	}, "/commits")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "repo")
+	assert.Contains(t, err.Error(), propRepo)
 }
 
 // TestParseCommitResponseMinimal tests parsing a minimal commit response
@@ -849,7 +864,7 @@ func TestParseCommitResponseWithSingleTag(t *testing.T) {
 	}
 
 	commit := parseCommitResponse(cr)
-	tagsMap, ok := commit.Properties["tags"].(map[string]string)
+	tagsMap, ok := commit.Properties[testTags].(map[string]string)
 	assert.True(t, ok)
 	assert.Equal(t, "", tagsMap["single"])
 }
@@ -857,7 +872,7 @@ func TestParseCommitResponseWithSingleTag(t *testing.T) {
 // TestMatchesTagsEmpty tests matching with no tags specified
 func TestMatchesTagsEmpty(t *testing.T) {
 	commit := remote.Commit{
-		ID:         "commit1",
+		ID:         testCommit1,
 		Properties: map[string]interface{}{},
 	}
 
@@ -868,29 +883,29 @@ func TestMatchesTagsEmpty(t *testing.T) {
 // TestMatchesTagsNoCommitTags tests matching when commit has no tags
 func TestMatchesTagsNoCommitTags(t *testing.T) {
 	commit := remote.Commit{
-		ID:         "commit1",
+		ID:         testCommit1,
 		Properties: map[string]interface{}{},
 	}
 
-	envVal := "prod"
+	envVal := testProd
 	// Should not match when filter tags specified but commit has none
-	assert.False(t, matchesTags(commit, []remote.Tag{{Key: "env", Value: &envVal}}))
+	assert.False(t, matchesTags(commit, []remote.Tag{{Key: testEnv, Value: &envVal}}))
 }
 
 // TestMatchesTagsKeyOnly tests matching with key-only tag filter
 func TestMatchesTagsKeyOnly(t *testing.T) {
 	commit := remote.Commit{
-		ID: "commit1",
+		ID: testCommit1,
 		Properties: map[string]interface{}{
-			"tags": map[string]string{
-				"env":     "prod",
+			testTags: map[string]string{
+				testEnv:   testProd,
 				"version": "1.0",
 			},
 		},
 	}
 
 	// Should match when key exists (value not specified in filter)
-	assert.True(t, matchesTags(commit, []remote.Tag{{Key: "env", Value: nil}}))
+	assert.True(t, matchesTags(commit, []remote.Tag{{Key: testEnv, Value: nil}}))
 }
 
 // TestListCommitsEmpty tests listing commits with empty response
@@ -899,7 +914,7 @@ func TestListCommitsEmpty(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(listCommitsResponse{
-			Repo:    "testrepo",
+			Repo:    testRepoName,
 			Commits: []commitResponse{},
 		})
 	})
@@ -909,9 +924,9 @@ func TestListCommitsEmpty(t *testing.T) {
 	r := remote.Get("datadatdat")
 	commits, err := r.ListCommits(
 		map[string]interface{}{
-			"api_base_url": server.URL,
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: server.URL,
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{},
 		[]remote.Tag{},
@@ -926,8 +941,8 @@ func TestListCommitsBadProperties(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, err := r.ListCommits(
 		map[string]interface{}{
-			"org":  "testorg",
-			"repo": "testrepo",
+			propOrg:  testOrgName,
+			propRepo: testRepoName,
 			// Missing api_base_url
 		},
 		map[string]interface{}{},
@@ -935,7 +950,7 @@ func TestListCommitsBadProperties(t *testing.T) {
 	)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "api_base_url")
+	assert.Contains(t, err.Error(), propAPIBaseURL)
 }
 
 // TestGetCommitBadProperties tests error when properties are invalid
@@ -943,8 +958,8 @@ func TestGetCommitBadProperties(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, err := r.GetCommit(
 		map[string]interface{}{
-			"org":  "testorg",
-			"repo": "testrepo",
+			propOrg:  testOrgName,
+			propRepo: testRepoName,
 			// Missing api_base_url
 		},
 		map[string]interface{}{},
@@ -952,7 +967,7 @@ func TestGetCommitBadProperties(t *testing.T) {
 	)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "api_base_url")
+	assert.Contains(t, err.Error(), propAPIBaseURL)
 }
 
 // TestFromURLPortOutOfRange tests port that parses but exceeds 65535
@@ -970,12 +985,12 @@ func TestGetParametersEnvFallback(t *testing.T) {
 	defer func() { _ = os.Unsetenv("DATADATDAT_API_KEY") }()
 
 	props, err := r.GetParameters(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
 	})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "env-token-123", props["api_token"])
+		assert.Equal(t, "env-token-123", props[propAPIToken])
 	}
 }
 
@@ -984,9 +999,9 @@ func TestListCommitsConnectionError(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, err := r.ListCommits(
 		map[string]interface{}{
-			"api_base_url": "http://127.0.0.1:1",
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: "http://127.0.0.1:1",
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{},
 		[]remote.Tag{},
@@ -999,9 +1014,9 @@ func TestGetCommitConnectionError(t *testing.T) {
 	r := remote.Get("datadatdat")
 	_, err := r.GetCommit(
 		map[string]interface{}{
-			"api_base_url": "http://127.0.0.1:1",
-			"org":          "testorg",
-			"repo":         "testrepo",
+			propAPIBaseURL: "http://127.0.0.1:1",
+			propOrg:        testOrgName,
+			propRepo:       testRepoName,
 		},
 		map[string]interface{}{},
 		"commit123",
@@ -1012,10 +1027,10 @@ func TestGetCommitConnectionError(t *testing.T) {
 // TestMatchesTagsMissingKey tests when commit tags don't have the filter key
 func TestMatchesTagsMissingKey(t *testing.T) {
 	commit := remote.Commit{
-		ID: "commit1",
+		ID: testCommit1,
 		Properties: map[string]interface{}{
-			"tags": map[string]string{
-				"env": "prod",
+			testTags: map[string]string{
+				testEnv: testProd,
 			},
 		},
 	}
@@ -1025,21 +1040,21 @@ func TestMatchesTagsMissingKey(t *testing.T) {
 // TestMatchesTagsValueMismatch tests when tag value doesn't match
 func TestMatchesTagsValueMismatch(t *testing.T) {
 	commit := remote.Commit{
-		ID: "commit1",
+		ID: testCommit1,
 		Properties: map[string]interface{}{
-			"tags": map[string]string{
-				"env": "prod",
+			testTags: map[string]string{
+				testEnv: testProd,
 			},
 		},
 	}
 	dev := "dev"
-	assert.False(t, matchesTags(commit, []remote.Tag{{Key: "env", Value: &dev}}))
+	assert.False(t, matchesTags(commit, []remote.Tag{{Key: testEnv, Value: &dev}}))
 }
 
 // TestDoRequestBadMethod tests doRequest with invalid HTTP method
 func TestDoRequestBadMethod(t *testing.T) {
 	p := NewProvider()
-	_, err := p.doRequest(context.TODO(), "\x00", "http://localhost", nil, map[string]interface{}{})
+	_, err := p.doRequest(context.TODO(), "\x00", testLocalhost, nil, map[string]interface{}{})
 	assert.Error(t, err)
 }
 
@@ -1083,13 +1098,13 @@ func TestGetParametersExplicitTokenTakesPrecedenceOverEnv(t *testing.T) {
 	defer func() { _ = os.Unsetenv("DATADATDAT_API_KEY") }()
 
 	props, err := r.GetParameters(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
-		"api_token":    "explicit-token",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		propAPIToken:   "explicit-token",
 	})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "explicit-token", props["api_token"])
+		assert.Equal(t, "explicit-token", props[propAPIToken])
 	}
 }
 
@@ -1100,12 +1115,12 @@ func TestGetParametersNoEnvNoToken(t *testing.T) {
 	_ = os.Unsetenv("DATADATDAT_API_KEY")
 
 	props, err := r.GetParameters(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
 	})
 	if assert.NoError(t, err) {
-		_, hasToken := props["api_token"]
+		_, hasToken := props[propAPIToken]
 		assert.False(t, hasToken)
 	}
 }
@@ -1116,18 +1131,18 @@ func TestToURLExcludesNonStringProperties(t *testing.T) {
 	r := remote.Get("datadatdat")
 
 	u, props, err := r.ToURL(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
-		"port":         8080,     // int - system prop, excluded
-		"api_token":    "secret", // string - should be in additional
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		propPort:       8080,     // int - system prop, excluded
+		propAPIToken:   "secret", // string - should be in additional
 	})
 	if assert.NoError(t, err) {
 		assert.Equal(t, "http://localhost/org/repo", u)
 		assert.Len(t, props, 1)
-		assert.Equal(t, "secret", props["api_token"])
+		assert.Equal(t, "secret", props[propAPIToken])
 		// port should not appear in additional properties
-		_, hasPort := props["port"]
+		_, hasPort := props[propPort]
 		assert.False(t, hasPort)
 	}
 }
@@ -1145,7 +1160,7 @@ func TestFromURLPortMax(t *testing.T) {
 	r := remote.Get("datadatdat")
 	props, err := r.FromURL("http://host:65535/org/repo", map[string]string{})
 	if assert.NoError(t, err) {
-		assert.Equal(t, 65535, props["port"])
+		assert.Equal(t, 65535, props[propPort])
 	}
 }
 
@@ -1153,10 +1168,10 @@ func TestFromURLPortMax(t *testing.T) {
 func TestValidateRemotePortZero(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
-		"port":         0,
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		propPort:       0,
 	})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "0")
@@ -1166,10 +1181,10 @@ func TestValidateRemotePortZero(t *testing.T) {
 func TestValidateRemotePortMax(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
-		"port":         65535,
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		propPort:       65535,
 	})
 	assert.NoError(t, err)
 }
@@ -1178,10 +1193,10 @@ func TestValidateRemotePortMax(t *testing.T) {
 func TestValidateRemotePortOverMax(t *testing.T) {
 	r := remote.Get("datadatdat")
 	err := r.ValidateRemote(map[string]interface{}{
-		"api_base_url": "http://localhost",
-		"org":          "org",
-		"repo":         "repo",
-		"port":         65536,
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		propPort:       65536,
 	})
 	assert.Error(t, err)
 }
@@ -1197,29 +1212,29 @@ func TestParseCommitResponseTagsWithMultipleColons(t *testing.T) {
 	}
 
 	commit := parseCommitResponse(cr)
-	tagsMap, ok := commit.Properties["tags"].(map[string]string)
+	tagsMap, ok := commit.Properties[testTags].(map[string]string)
 	assert.True(t, ok)
 	assert.Equal(t, "value:with:colons", tagsMap["key"])
 	assert.Equal(t, "value", tagsMap["simple"])
 }
 
 // TestParseCommitResponseMetadataDoesNotOverrideTags tests that metadata
-// with a "tags" key does not overwrite parsed tags
+// with a testTags key does not overwrite parsed tags
 func TestParseCommitResponseMetadataDoesNotOverrideTags(t *testing.T) {
 	cr := commitResponse{
 		CommitID:  "tagsafe123",
 		Timestamp: time.Now(),
 		Size:      100,
-		Tags:      []string{"env:prod"},
+		Tags:      []string{testEnvProd},
 		Metadata: map[string]interface{}{
-			"tags": "should-not-replace",
+			testTags: "should-not-replace",
 		},
 	}
 
 	commit := parseCommitResponse(cr)
-	tagsMap, ok := commit.Properties["tags"].(map[string]string)
+	tagsMap, ok := commit.Properties[testTags].(map[string]string)
 	assert.True(t, ok)
-	assert.Equal(t, "prod", tagsMap["env"])
+	assert.Equal(t, testProd, tagsMap[testEnv])
 }
 
 // TestDoRequestNoAuthWhenTokenEmpty tests that empty api_token does not
@@ -1234,7 +1249,7 @@ func TestDoRequestNoAuthWhenTokenEmpty(t *testing.T) {
 
 	p := NewProvider()
 	resp, err := p.doRequest(context.Background(), http.MethodGet, server.URL, nil, map[string]interface{}{
-		"api_token": "",
+		propAPIToken: "",
 	})
 	assert.NoError(t, err)
 	_ = resp.Body.Close()
