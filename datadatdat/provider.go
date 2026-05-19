@@ -23,6 +23,15 @@ const (
 	propRepo       = "repo"
 	propAPIToken   = "api_token"
 	propPort       = "port"
+
+	// userAgent identifies this provider on outbound HTTP requests.
+	userAgent = "datadatdat-remote-go/dev"
+
+	// redactedValue is substituted for sensitive property values in ToURL
+	// output. ToURL is documented as "for display only", so any sensitive
+	// data passed through additionalProps must be masked. Matches the
+	// "*****" convention used by ssh-remote-go.
+	redactedValue = "****"
 )
 
 // Provider implements the remote.Remote interface for datadatdat-remote-server.
@@ -61,12 +70,11 @@ type listCommitsResponse struct {
 }
 
 // NewProvider creates a new datadatdat remote provider instance.
+// The httpClient is initialized lazily on first use by getHTTPClient — the
+// constructor intentionally does not eagerly construct the http.Client to
+// avoid duplicating that logic in two places (see arch-review #40 finding #6).
 func NewProvider() *Provider {
-	return &Provider{
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
-	}
+	return &Provider{}
 }
 
 // buildAPIURL constructs the full API URL for a given path
@@ -91,6 +99,19 @@ func (p *Provider) buildAPIURL(properties map[string]interface{}, path string) (
 	return fullURL, nil
 }
 
+// formatServerError reads the response body for a non-OK status and returns
+// a formatted error including the status code and body text. If reading the
+// body itself fails, the read error is wrapped so callers can distinguish
+// "server returned error and we couldn't read why" from "server returned a
+// readable error". Caller is responsible for closing resp.Body.
+func formatServerError(resp *http.Response) error {
+	bodyBytes, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return fmt.Errorf("server returned error: %d (reading error response body: %w)", resp.StatusCode, readErr)
+	}
+	return fmt.Errorf("server returned error: %d - %s", resp.StatusCode, string(bodyBytes))
+}
+
 // doRequest performs an HTTP request with optional authentication
 func (p *Provider) doRequest(ctx context.Context, method, url string, body io.Reader, parameters map[string]interface{}) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
@@ -99,6 +120,7 @@ func (p *Provider) doRequest(ctx context.Context, method, url string, body io.Re
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", userAgent)
 
 	// Add Bearer token if present
 	if apiToken, ok := parameters[propAPIToken].(string); ok && apiToken != "" {
@@ -196,10 +218,9 @@ func (p *Provider) FromURL(rawURL string, additionalProperties map[string]string
 
 	org := pathParts[0]
 	repo := pathParts[1]
-
-	if org == "" || repo == "" {
-		return nil, fmt.Errorf("invalid path: org and repo cannot be empty")
-	}
+	// Both segments are guaranteed non-empty here: strings.Trim removed any
+	// leading/trailing slashes, and a 2-element split of a non-empty trimmed
+	// string with no leading/trailing separators cannot produce empty edges.
 
 	// Build API base URL (scheme://host:port)
 	apiBaseURL := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
@@ -269,10 +290,18 @@ func (p *Provider) ToURL(properties map[string]interface{}) (string, map[string]
 	}
 
 	for k, v := range properties {
-		if !systemProps[k] {
-			if strVal, ok := v.(string); ok {
-				additionalProps[k] = strVal
-			}
+		if systemProps[k] {
+			continue
+		}
+		// ToURL is "for display only" — sensitive properties must be
+		// redacted before being placed in the returned additionalProps map.
+		// Otherwise tokens leak into logs, UI, and persisted metadata.
+		if k == propAPIToken {
+			additionalProps[k] = redactedValue
+			continue
+		}
+		if strVal, ok := v.(string); ok {
+			additionalProps[k] = strVal
 		}
 	}
 
@@ -389,8 +418,7 @@ func (p *Provider) ListCommits(properties map[string]interface{}, parameters map
 
 	// Handle error responses
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("server returned error: %d - %s", resp.StatusCode, string(bodyBytes))
+		return nil, formatServerError(resp)
 	}
 
 	// Parse the response
@@ -438,8 +466,7 @@ func (p *Provider) GetCommit(properties map[string]interface{}, parameters map[s
 
 	// Handle other error responses
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("server returned error: %d - %s", resp.StatusCode, string(bodyBytes))
+		return nil, formatServerError(resp)
 	}
 
 	// Parse the response
