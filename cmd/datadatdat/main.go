@@ -2,14 +2,15 @@
 package main
 
 import (
-	"github.com/datadatdat/datadatdat-remote-go/datadatdat"
+	// Side-effect import: the datadatdat package's init() registers the provider
+	// with the remote SDK registry. Keep this as the sole registration site —
+	// matches the sibling pattern used by ssh-remote-go and s3-remote-go.
+	_ "github.com/datadatdat/datadatdat-remote-go/datadatdat"
+
 	"github.com/datadatdat/remote-sdk-go/remote"
 )
 
 func main() {
-	// Register the datadatdat provider
-	remote.Register(datadatdat.NewProvider())
-
 	// Serve the remote plugin
 	remote.Serve("datadatdat")
 }
