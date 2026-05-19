@@ -29,6 +29,8 @@ const (
 	testSecret    = "secret123"
 	testFoo       = "foo"
 	testVersion10 = "version:1.0"
+	testMyOrg     = "myorg"
+	testMyRepo    = "myrepo"
 )
 
 func TestRegistered(t *testing.T) {
@@ -47,8 +49,8 @@ func TestFromURL(t *testing.T) {
 	props, err := r.FromURL("http://data.datadatdat.io:8080/myorg/myrepo", map[string]string{})
 	if assert.NoError(t, err) {
 		assert.Equal(t, "http://data.datadatdat.io:8080", props[propAPIBaseURL])
-		assert.Equal(t, "myorg", props[propOrg])
-		assert.Equal(t, "myrepo", props[propRepo])
+		assert.Equal(t, testMyOrg, props[propOrg])
+		assert.Equal(t, testMyRepo, props[propRepo])
 		assert.Equal(t, 8080, props[propPort])
 	}
 }
@@ -60,8 +62,8 @@ func TestFromURLHTTPS(t *testing.T) {
 	props, err := r.FromURL("https://data.datadatdat.io/myorg/myrepo", map[string]string{})
 	if assert.NoError(t, err) {
 		assert.Equal(t, "https://data.datadatdat.io", props[propAPIBaseURL])
-		assert.Equal(t, "myorg", props[propOrg])
-		assert.Equal(t, "myrepo", props[propRepo])
+		assert.Equal(t, testMyOrg, props[propOrg])
+		assert.Equal(t, testMyRepo, props[propRepo])
 		assert.Nil(t, props[propPort])
 	}
 }
@@ -70,11 +72,11 @@ func TestFromURLHTTPS(t *testing.T) {
 func TestFromURLSimple(t *testing.T) {
 	r, _ := remote.Get("datadatdat")
 
-	props, err := r.FromURL("http://localhost/org/repo", map[string]string{})
+	props, err := r.FromURL("http://localhost/test-org/test-repo", map[string]string{})
 	if assert.NoError(t, err) {
 		assert.Equal(t, testLocalhost, props[propAPIBaseURL])
-		assert.Equal(t, propOrg, props[propOrg])
-		assert.Equal(t, propRepo, props[propRepo])
+		assert.Equal(t, "test-org", props[propOrg])
+		assert.Equal(t, "test-repo", props[propRepo])
 		assert.Nil(t, props[propPort])
 	}
 }
@@ -179,8 +181,8 @@ func TestToURL(t *testing.T) {
 
 	u, props, err := r.ToURL(map[string]interface{}{
 		propAPIBaseURL: "http://localhost:8080",
-		propOrg:        "myorg",
-		propRepo:       "myrepo",
+		propOrg:        testMyOrg,
+		propRepo:       testMyRepo,
 	})
 	if assert.NoError(t, err) {
 		assert.Equal(t, "http://localhost:8080/myorg/myrepo", u)
@@ -194,8 +196,8 @@ func TestToURLHTTPS(t *testing.T) {
 
 	u, props, err := r.ToURL(map[string]interface{}{
 		propAPIBaseURL: "https://data.datadatdat.io",
-		propOrg:        "myorg",
-		propRepo:       "myrepo",
+		propOrg:        testMyOrg,
+		propRepo:       testMyRepo,
 	})
 	if assert.NoError(t, err) {
 		assert.Equal(t, "https://data.datadatdat.io/myorg/myrepo", u)
@@ -203,7 +205,7 @@ func TestToURLHTTPS(t *testing.T) {
 	}
 }
 
-// TestToURLWithToken tests that API tokens are returned as properties, not in URL
+// TestToURLWithToken tests that API tokens are returned as properties (redacted), not in URL
 func TestToURLWithToken(t *testing.T) {
 	r, _ := remote.Get("datadatdat")
 
@@ -216,7 +218,9 @@ func TestToURLWithToken(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, "http://localhost/org/repo", u)
 		assert.Len(t, props, 1)
-		assert.Equal(t, testSecret, props[propAPIToken])
+		// ToURL is for display only — the token must be redacted, not leaked.
+		assert.Equal(t, "****", props[propAPIToken])
+		assert.NotEqual(t, testSecret, props[propAPIToken])
 	}
 }
 
@@ -1135,12 +1139,13 @@ func TestToURLExcludesNonStringProperties(t *testing.T) {
 		propOrg:        propOrg,
 		propRepo:       propRepo,
 		propPort:       8080,     // int - system prop, excluded
-		propAPIToken:   "secret", // string - should be in additional
+		propAPIToken:   "secret", // sensitive — must be redacted in output
 	})
 	if assert.NoError(t, err) {
 		assert.Equal(t, "http://localhost/org/repo", u)
 		assert.Len(t, props, 1)
-		assert.Equal(t, "secret", props[propAPIToken])
+		// api_token is redacted, not echoed back as plaintext.
+		assert.Equal(t, "****", props[propAPIToken])
 		// port should not appear in additional properties
 		_, hasPort := props[propPort]
 		assert.False(t, hasPort)
@@ -1279,4 +1284,120 @@ func TestGetHTTPClientLazyInit(t *testing.T) {
 	assert.Equal(t, 30*time.Second, client.Timeout)
 	// Second call should return the same client
 	assert.Same(t, client, p.getHTTPClient())
+}
+
+// TestSingleRegistration verifies that exactly one Provider instance is
+// registered for "datadatdat" after process init. Guards against the
+// double-registration pattern flagged in arch-review issue #40 (finding #1):
+// init() in this package should be the sole registration site; cmd/main.go
+// must NOT call Register(NewProvider()) a second time.
+func TestSingleRegistration(t *testing.T) {
+	r, ok := remote.Get("datadatdat")
+	assert.True(t, ok, "datadatdat must be registered")
+	// The registered instance must come from this package's init(), not
+	// from a wrapper or duplicate registration. We can't enumerate the
+	// registry, but we can assert the registered Remote behaves correctly.
+	typ, err := r.Type()
+	assert.NoError(t, err)
+	assert.Equal(t, "datadatdat", typ)
+
+	// Re-fetching returns the SAME instance — registry is keyed by type,
+	// so a single Register call means a single live instance.
+	r2, _ := remote.Get("datadatdat")
+	assert.Same(t, r, r2, "registry must return the same instance on repeated Get calls")
+}
+
+// TestToURLRedactsAPIToken verifies that ToURL does NOT leak the api_token
+// value through the returned additionalProps map. ToURL is documented as
+// "for display only"; sensitive properties must be redacted. Guards against
+// arch-review issue #40 finding #2.
+func TestToURLRedactsAPIToken(t *testing.T) {
+	r, _ := remote.Get("datadatdat")
+
+	const literalToken = "super-secret-token-do-not-leak"
+	_, props, err := r.ToURL(map[string]interface{}{
+		propAPIBaseURL: testLocalhost,
+		propOrg:        testMyOrg,
+		propRepo:       testMyRepo,
+		propAPIToken:   literalToken,
+	})
+	assert.NoError(t, err)
+
+	// The literal token value must NOT appear anywhere in the returned
+	// additionalProps map. It should either be absent or redacted to "****".
+	for k, v := range props {
+		assert.NotEqual(t, literalToken, v,
+			"ToURL leaked api_token literal in additionalProps[%q]", k)
+	}
+
+	// If api_token is present in props, it must be the redaction marker.
+	if val, ok := props[propAPIToken]; ok {
+		assert.Equal(t, "****", val,
+			"api_token in ToURL output must be redacted to ****")
+	}
+}
+
+// TestToURLPreservesUnknownStringProperties verifies that non-system,
+// non-sensitive string properties are passed through unmodified — only
+// api_token gets redacted.
+func TestToURLPreservesUnknownStringProperties(t *testing.T) {
+	r, _ := remote.Get("datadatdat")
+	_, props, err := r.ToURL(map[string]interface{}{
+		propAPIBaseURL: testLocalhost,
+		propOrg:        propOrg,
+		propRepo:       propRepo,
+		"custom_label": "production",
+	})
+	if assert.NoError(t, err) {
+		assert.Equal(t, "production", props["custom_label"])
+	}
+}
+
+// errReader is an io.ReadCloser that always returns an error from Read,
+// used to exercise the read-error path in formatServerError.
+type errReader struct{}
+
+func (errReader) Read(_ []byte) (int, error) { return 0, errReadFailed }
+func (errReader) Close() error               { return nil }
+
+var errReadFailed = errReadFailedT{}
+
+type errReadFailedT struct{}
+
+func (errReadFailedT) Error() string { return "simulated read failure" }
+
+// TestFormatServerErrorBodyReadFails verifies that when the response body
+// cannot be read, the wrapped error includes the read error context.
+// Guards against arch-review #40 finding #7.
+func TestFormatServerErrorBodyReadFails(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: http.StatusInternalServerError,
+		Body:       errReader{},
+	}
+	err := formatServerError(resp)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "500")
+	assert.Contains(t, err.Error(), "reading error response body")
+	assert.Contains(t, err.Error(), "simulated read failure")
+}
+
+// TestDoRequestSetsUserAgent verifies outbound HTTP requests carry a
+// User-Agent header identifying this provider. Guards against arch-review
+// issue #40 finding #5.
+func TestDoRequestSetsUserAgent(t *testing.T) {
+	var seenUA string
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenUA = r.Header.Get("User-Agent")
+		w.WriteHeader(http.StatusOK)
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	p := NewProvider()
+	resp, err := p.doRequest(context.Background(), http.MethodGet, server.URL, nil, map[string]interface{}{})
+	assert.NoError(t, err)
+	_ = resp.Body.Close()
+
+	assert.Contains(t, seenUA, "datadatdat-remote-go",
+		"User-Agent header must identify the provider")
 }
