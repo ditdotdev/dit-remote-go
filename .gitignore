@@ -47,3 +47,7 @@ pids/
 coverage.out
 coverage.html
 *.coverprofile
+
+# Coverage profiles + local repo-health output
+cov*.out
+.health/
