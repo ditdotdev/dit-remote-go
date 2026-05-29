@@ -3,7 +3,7 @@ module github.com/datadatdat/datadatdat-remote-go
 go 1.26.2
 
 require (
-	github.com/datadatdat/remote-sdk-go v1.11.0
+	github.com/datadatdat/remote-sdk-go v1.9.1
 	github.com/stretchr/testify v1.11.1
 )
 
