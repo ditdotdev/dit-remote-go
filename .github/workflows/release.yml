@@ -1,5 +1,5 @@
 #
-# Copyright Datadatdat.
+# Copyright Dit.
 #
 
 #
@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   health:
-    uses: datadatdat/.github/.github/workflows/repo-health.yml@master
+    uses: ditdotdev/.github/.github/workflows/repo-health.yml@master
     with:
       language: go
       coverage-floor: 90
@@ -68,21 +68,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Get Binary Name
         id: binary_name
-        run: ./.github/get-binary-name datadatdat ${{ runner.os }}
+        run: ./.github/get-binary-name dit ${{ runner.os }}
       - name: Build
-        run: go build -o build/datadatdat ./cmd/datadatdat
+        run: go build -o build/dit ./cmd/dit
         env:
-          GOPRIVATE: github.com/datadatdat/*
+          GOPRIVATE: github.com/ditdotdev/*
       - name: Test
         run: go test -v ./...
         env:
-          GOPRIVATE: github.com/datadatdat/*
+          GOPRIVATE: github.com/ditdotdev/*
       - name: Upload Artifact
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.draft_release.outputs.upload_url }}
-          asset_path: ./build/datadatdat
+          asset_path: ./build/dit
           asset_name: ${{ steps.binary_name.outputs.binary_name }}
           asset_content_type: application/octet-stream
