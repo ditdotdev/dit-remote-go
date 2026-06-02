@@ -1,7 +1,7 @@
 /*
- * Copyright Datadatdat.
+ * Copyright Dit.
  */
-package datadatdat
+package dit
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/datadatdat/remote-sdk-go/remote"
+	"github.com/ditdotdev/remote-sdk-go/remote"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,21 +34,21 @@ const (
 )
 
 func TestRegistered(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
 	ret, err := r.Type()
 	if assert.NoError(t, err) {
-		assert.Equal(t, "datadatdat", ret)
+		assert.Equal(t, "dit", ret)
 	}
 }
 
 // TestFromURL tests parsing complete HTTP URLs
 func TestFromURL(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
-	props, err := r.FromURL("http://data.datadatdat.io:8080/myorg/myrepo", map[string]string{})
+	props, err := r.FromURL("http://data.dit.io:8080/myorg/myrepo", map[string]string{})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "http://data.datadatdat.io:8080", props[propAPIBaseURL])
+		assert.Equal(t, "http://data.dit.io:8080", props[propAPIBaseURL])
 		assert.Equal(t, testMyOrg, props[propOrg])
 		assert.Equal(t, testMyRepo, props[propRepo])
 		assert.Equal(t, 8080, props[propPort])
@@ -57,11 +57,11 @@ func TestFromURL(t *testing.T) {
 
 // TestFromURLHTTPS tests parsing HTTPS URLs
 func TestFromURLHTTPS(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
-	props, err := r.FromURL("https://data.datadatdat.io/myorg/myrepo", map[string]string{})
+	props, err := r.FromURL("https://data.dit.io/myorg/myrepo", map[string]string{})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "https://data.datadatdat.io", props[propAPIBaseURL])
+		assert.Equal(t, "https://data.dit.io", props[propAPIBaseURL])
 		assert.Equal(t, testMyOrg, props[propOrg])
 		assert.Equal(t, testMyRepo, props[propRepo])
 		assert.Nil(t, props[propPort])
@@ -70,7 +70,7 @@ func TestFromURLHTTPS(t *testing.T) {
 
 // TestFromURLSimple tests parsing URLs without port
 func TestFromURLSimple(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
 	props, err := r.FromURL("http://localhost/test-org/test-repo", map[string]string{})
 	if assert.NoError(t, err) {
@@ -83,7 +83,7 @@ func TestFromURLSimple(t *testing.T) {
 
 // TestFromURLWithAPIToken tests passing API token as parameter
 func TestFromURLWithAPIToken(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
 	props, err := r.FromURL("http://localhost/org/repo", map[string]string{propAPIToken: testSecret})
 	if assert.NoError(t, err) {
@@ -93,91 +93,91 @@ func TestFromURLWithAPIToken(t *testing.T) {
 
 // TestBadURLMalformed tests rejection of malformed URLs
 func TestBadURLMalformed(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("http://host\nname", map[string]string{})
 	assert.Error(t, err)
 }
 
 // TestBadScheme tests rejection of wrong scheme
 func TestBadScheme(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("ssh://host/org/repo", map[string]string{})
 	assert.Error(t, err)
 }
 
 // TestBadSchemeFTP tests rejection of FTP scheme
 func TestBadSchemeFTP(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("ftp://host/org/repo", map[string]string{})
 	assert.Error(t, err)
 }
 
 // TestBadProperty tests rejection of unknown properties
 func TestBadProperty(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("http://host/org/repo", map[string]string{testFoo: testBar})
 	assert.Error(t, err)
 }
 
 // TestBadMissingHost tests rejection of URLs without host
 func TestBadMissingHost(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("http:///org/repo", map[string]string{})
 	assert.Error(t, err)
 }
 
 // TestBadSchemeOnly tests rejection of scheme-only strings
 func TestBadSchemeOnly(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("http", map[string]string{})
 	assert.Error(t, err)
 }
 
 // TestBadMissingOrg tests rejection of URLs without org
 func TestBadMissingOrg(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("http://host/", map[string]string{})
 	assert.Error(t, err)
 }
 
 // TestBadMissingRepo tests rejection of URLs without repo
 func TestBadMissingRepo(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("http://host/org", map[string]string{})
 	assert.Error(t, err)
 }
 
 // TestBadMissingRepoTrailingSlash tests rejection with trailing slash but no repo
 func TestBadMissingRepoTrailingSlash(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("http://host/org/", map[string]string{})
 	assert.Error(t, err)
 }
 
 // TestBadPort tests rejection of invalid port numbers
 func TestBadPort(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("http://host:99999999999999999999/org/repo", map[string]string{})
 	assert.Error(t, err)
 }
 
 // TestBadNegativePort tests rejection of negative ports
 func TestBadNegativePort(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("http://host:-1/org/repo", map[string]string{})
 	assert.Error(t, err)
 }
 
 // TestBadExtraPathSegments tests rejection of URLs with extra path segments
 func TestBadExtraPathSegments(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("http://host/org/repo/extra", map[string]string{})
 	assert.Error(t, err)
 }
 
 // TestToURL tests reconstructing URLs from properties
 func TestToURL(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
 	u, props, err := r.ToURL(map[string]interface{}{
 		propAPIBaseURL: "http://localhost:8080",
@@ -192,22 +192,22 @@ func TestToURL(t *testing.T) {
 
 // TestToURLHTTPS tests reconstructing HTTPS URLs
 func TestToURLHTTPS(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
 	u, props, err := r.ToURL(map[string]interface{}{
-		propAPIBaseURL: "https://data.datadatdat.io",
+		propAPIBaseURL: "https://data.dit.io",
 		propOrg:        testMyOrg,
 		propRepo:       testMyRepo,
 	})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "https://data.datadatdat.io/myorg/myrepo", u)
+		assert.Equal(t, "https://data.dit.io/myorg/myrepo", u)
 		assert.Empty(t, props)
 	}
 }
 
 // TestToURLWithToken tests that API tokens are returned as properties (redacted), not in URL
 func TestToURLWithToken(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
 	u, props, err := r.ToURL(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
@@ -226,7 +226,7 @@ func TestToURLWithToken(t *testing.T) {
 
 // TestToURLMissingAPIBaseURL tests error when api_base_url is missing
 func TestToURLMissingAPIBaseURL(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, _, err := r.ToURL(map[string]interface{}{
 		propOrg:  propOrg,
 		propRepo: propRepo,
@@ -236,7 +236,7 @@ func TestToURLMissingAPIBaseURL(t *testing.T) {
 
 // TestToURLMissingOrg tests error when org is missing
 func TestToURLMissingOrg(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, _, err := r.ToURL(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propRepo:       propRepo,
@@ -246,7 +246,7 @@ func TestToURLMissingOrg(t *testing.T) {
 
 // TestToURLMissingRepo tests error when repo is missing
 func TestToURLMissingRepo(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, _, err := r.ToURL(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        propOrg,
@@ -256,7 +256,7 @@ func TestToURLMissingRepo(t *testing.T) {
 
 // TestToURLBadAPIBaseURLType tests error when api_base_url is wrong type
 func TestToURLBadAPIBaseURLType(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, _, err := r.ToURL(map[string]interface{}{
 		propAPIBaseURL: 123,
 		propOrg:        propOrg,
@@ -267,7 +267,7 @@ func TestToURLBadAPIBaseURLType(t *testing.T) {
 
 // TestToURLBadOrgType tests error when org is wrong type
 func TestToURLBadOrgType(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, _, err := r.ToURL(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        123,
@@ -278,7 +278,7 @@ func TestToURLBadOrgType(t *testing.T) {
 
 // TestToURLBadRepoType tests error when repo is wrong type
 func TestToURLBadRepoType(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, _, err := r.ToURL(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        propOrg,
@@ -289,7 +289,7 @@ func TestToURLBadRepoType(t *testing.T) {
 
 // TestGetParameters tests parameter pass-through
 func TestGetParameters(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
 	props, err := r.GetParameters(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
@@ -305,7 +305,7 @@ func TestGetParameters(t *testing.T) {
 
 // TestGetParametersWithToken tests API token pass-through
 func TestGetParametersWithToken(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
 	props, err := r.GetParameters(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
@@ -320,7 +320,7 @@ func TestGetParametersWithToken(t *testing.T) {
 
 // TestValidateRemoteRequiredOnly tests validation with only required properties
 func TestValidateRemoteRequiredOnly(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateRemote(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        propOrg,
@@ -331,7 +331,7 @@ func TestValidateRemoteRequiredOnly(t *testing.T) {
 
 // TestValidateRemoteAllProperties tests validation with all optional properties
 func TestValidateRemoteAllProperties(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateRemote(map[string]interface{}{
 		propAPIBaseURL: "http://localhost:8080",
 		propOrg:        propOrg,
@@ -344,7 +344,7 @@ func TestValidateRemoteAllProperties(t *testing.T) {
 
 // TestValidateRemoteMissingAPIBaseURL tests error when api_base_url is missing
 func TestValidateRemoteMissingAPIBaseURL(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateRemote(map[string]interface{}{
 		propOrg:  propOrg,
 		propRepo: propRepo,
@@ -355,7 +355,7 @@ func TestValidateRemoteMissingAPIBaseURL(t *testing.T) {
 
 // TestValidateRemoteMissingOrg tests error when org is missing
 func TestValidateRemoteMissingOrg(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateRemote(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propRepo:       propRepo,
@@ -366,7 +366,7 @@ func TestValidateRemoteMissingOrg(t *testing.T) {
 
 // TestValidateRemoteMissingRepo tests error when repo is missing
 func TestValidateRemoteMissingRepo(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateRemote(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        propOrg,
@@ -377,7 +377,7 @@ func TestValidateRemoteMissingRepo(t *testing.T) {
 
 // TestValidateRemoteExtraProperty tests error with unknown property
 func TestValidateRemoteExtraProperty(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateRemote(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        propOrg,
@@ -390,7 +390,7 @@ func TestValidateRemoteExtraProperty(t *testing.T) {
 
 // TestValidateRemoteBadPortType tests error when port is wrong type
 func TestValidateRemoteBadPortType(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateRemote(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        propOrg,
@@ -402,7 +402,7 @@ func TestValidateRemoteBadPortType(t *testing.T) {
 
 // TestValidateRemoteBadPortNegative tests error when port is negative
 func TestValidateRemoteBadPortNegative(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateRemote(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        propOrg,
@@ -414,7 +414,7 @@ func TestValidateRemoteBadPortNegative(t *testing.T) {
 
 // TestValidateRemotePortFloat tests that float ports are accepted and converted
 func TestValidateRemotePortFloat(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateRemote(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        propOrg,
@@ -426,7 +426,7 @@ func TestValidateRemotePortFloat(t *testing.T) {
 
 // TestValidateRemotePortFloat32 tests that float32 ports work
 func TestValidateRemotePortFloat32(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
 	var p float32 = 8080.0
 
@@ -441,14 +441,14 @@ func TestValidateRemotePortFloat32(t *testing.T) {
 
 // TestValidateParametersEmpty tests validation with no parameters
 func TestValidateParametersEmpty(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateParameters(map[string]interface{}{})
 	assert.NoError(t, err)
 }
 
 // TestValidateParametersWithToken tests validation with API token
 func TestValidateParametersWithToken(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateParameters(map[string]interface{}{
 		propAPIToken: testSecret,
 	})
@@ -457,7 +457,7 @@ func TestValidateParametersWithToken(t *testing.T) {
 
 // TestValidateParametersUnknown tests error with unknown parameter
 func TestValidateParametersUnknown(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateParameters(map[string]interface{}{
 		testFoo: testBar,
 	})
@@ -505,7 +505,7 @@ func TestListCommitsSuccess(t *testing.T) {
 	defer server.Close()
 
 	// Test ListCommits
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	commits, err := r.ListCommits(
 		map[string]interface{}{
 			propAPIBaseURL: server.URL,
@@ -540,7 +540,7 @@ func TestListCommitsWithAuthentication(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.ListCommits(
 		map[string]interface{}{
 			propAPIBaseURL: server.URL,
@@ -582,7 +582,7 @@ func TestListCommitsWithTagFiltering(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
 	// Filter for env:prod
 	envProd := testProd
@@ -611,7 +611,7 @@ func TestListCommitsServerError(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.ListCommits(
 		map[string]interface{}{
 			propAPIBaseURL: server.URL,
@@ -636,7 +636,7 @@ func TestListCommitsInvalidResponse(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.ListCommits(
 		map[string]interface{}{
 			propAPIBaseURL: server.URL,
@@ -673,7 +673,7 @@ func TestGetCommitSuccess(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	commit, err := r.GetCommit(
 		map[string]interface{}{
 			propAPIBaseURL: server.URL,
@@ -701,7 +701,7 @@ func TestGetCommitNotFound(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	commit, err := r.GetCommit(
 		map[string]interface{}{
 			propAPIBaseURL: server.URL,
@@ -730,7 +730,7 @@ func TestGetCommitWithAuthentication(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.GetCommit(
 		map[string]interface{}{
 			propAPIBaseURL: server.URL,
@@ -755,7 +755,7 @@ func TestGetCommitServerError(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.GetCommit(
 		map[string]interface{}{
 			propAPIBaseURL: server.URL,
@@ -780,7 +780,7 @@ func TestGetCommitInvalidResponse(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.GetCommit(
 		map[string]interface{}{
 			propAPIBaseURL: server.URL,
@@ -925,7 +925,7 @@ func TestListCommitsEmpty(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	commits, err := r.ListCommits(
 		map[string]interface{}{
 			propAPIBaseURL: server.URL,
@@ -942,7 +942,7 @@ func TestListCommitsEmpty(t *testing.T) {
 
 // TestListCommitsBadProperties tests error when properties are invalid
 func TestListCommitsBadProperties(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.ListCommits(
 		map[string]interface{}{
 			propOrg:  testOrgName,
@@ -959,7 +959,7 @@ func TestListCommitsBadProperties(t *testing.T) {
 
 // TestGetCommitBadProperties tests error when properties are invalid
 func TestGetCommitBadProperties(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.GetCommit(
 		map[string]interface{}{
 			propOrg:  testOrgName,
@@ -976,7 +976,7 @@ func TestGetCommitBadProperties(t *testing.T) {
 
 // TestFromURLPortOutOfRange tests port that parses but exceeds 65535
 func TestFromURLPortOutOfRange(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("http://host:70000/org/repo", map[string]string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "70000")
@@ -984,7 +984,7 @@ func TestFromURLPortOutOfRange(t *testing.T) {
 
 // TestGetParametersEnvFallback tests api_token from DATADATDAT_API_KEY env var
 func TestGetParametersEnvFallback(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_ = os.Setenv("DATADATDAT_API_KEY", "env-token-123")
 	defer func() { _ = os.Unsetenv("DATADATDAT_API_KEY") }()
 
@@ -1000,7 +1000,7 @@ func TestGetParametersEnvFallback(t *testing.T) {
 
 // TestListCommitsConnectionError tests HTTP connection failure
 func TestListCommitsConnectionError(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.ListCommits(
 		map[string]interface{}{
 			propAPIBaseURL: "http://127.0.0.1:1",
@@ -1015,7 +1015,7 @@ func TestListCommitsConnectionError(t *testing.T) {
 
 // TestGetCommitConnectionError tests HTTP connection failure for GetCommit
 func TestGetCommitConnectionError(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.GetCommit(
 		map[string]interface{}{
 			propAPIBaseURL: "http://127.0.0.1:1",
@@ -1097,7 +1097,7 @@ func TestParseCommitResponseMetadataDoesNotOverrideStandard(t *testing.T) {
 // TestGetParametersExplicitTokenTakesPrecedenceOverEnv tests that an explicit api_token
 // in properties is not overwritten by the DATADATDAT_API_KEY env var
 func TestGetParametersExplicitTokenTakesPrecedenceOverEnv(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_ = os.Setenv("DATADATDAT_API_KEY", "env-token")
 	defer func() { _ = os.Unsetenv("DATADATDAT_API_KEY") }()
 
@@ -1115,7 +1115,7 @@ func TestGetParametersExplicitTokenTakesPrecedenceOverEnv(t *testing.T) {
 // TestGetParametersNoEnvNoToken tests that api_token is absent when neither
 // explicitly set nor available via environment variable
 func TestGetParametersNoEnvNoToken(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_ = os.Unsetenv("DATADATDAT_API_KEY")
 
 	props, err := r.GetParameters(map[string]interface{}{
@@ -1132,7 +1132,7 @@ func TestGetParametersNoEnvNoToken(t *testing.T) {
 // TestToURLExcludesNonStringProperties tests that non-string properties
 // (like port as int) are silently excluded from additional properties
 func TestToURLExcludesNonStringProperties(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
 	u, props, err := r.ToURL(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
@@ -1154,7 +1154,7 @@ func TestToURLExcludesNonStringProperties(t *testing.T) {
 
 // TestFromURLPortZero tests that port 0 is rejected
 func TestFromURLPortZero(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, err := r.FromURL("http://host:0/org/repo", map[string]string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "0")
@@ -1162,7 +1162,7 @@ func TestFromURLPortZero(t *testing.T) {
 
 // TestFromURLPortMax tests that port 65535 is accepted
 func TestFromURLPortMax(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	props, err := r.FromURL("http://host:65535/org/repo", map[string]string{})
 	if assert.NoError(t, err) {
 		assert.Equal(t, 65535, props[propPort])
@@ -1171,7 +1171,7 @@ func TestFromURLPortMax(t *testing.T) {
 
 // TestValidateRemotePortZero tests that port 0 is rejected in validation
 func TestValidateRemotePortZero(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateRemote(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        propOrg,
@@ -1184,7 +1184,7 @@ func TestValidateRemotePortZero(t *testing.T) {
 
 // TestValidateRemotePortMax tests that port 65535 is accepted in validation
 func TestValidateRemotePortMax(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateRemote(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        propOrg,
@@ -1196,7 +1196,7 @@ func TestValidateRemotePortMax(t *testing.T) {
 
 // TestValidateRemotePortOverMax tests that port 65536 is rejected in validation
 func TestValidateRemotePortOverMax(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	err := r.ValidateRemote(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        propOrg,
@@ -1287,23 +1287,23 @@ func TestGetHTTPClientLazyInit(t *testing.T) {
 }
 
 // TestSingleRegistration verifies that exactly one Provider instance is
-// registered for "datadatdat" after process init. Guards against the
+// registered for "dit" after process init. Guards against the
 // double-registration pattern flagged in arch-review issue #40 (finding #1):
 // init() in this package should be the sole registration site; cmd/main.go
 // must NOT call Register(NewProvider()) a second time.
 func TestSingleRegistration(t *testing.T) {
-	r, ok := remote.Get("datadatdat")
-	assert.True(t, ok, "datadatdat must be registered")
+	r, ok := remote.Get("dit")
+	assert.True(t, ok, "dit must be registered")
 	// The registered instance must come from this package's init(), not
 	// from a wrapper or duplicate registration. We can't enumerate the
 	// registry, but we can assert the registered Remote behaves correctly.
 	typ, err := r.Type()
 	assert.NoError(t, err)
-	assert.Equal(t, "datadatdat", typ)
+	assert.Equal(t, "dit", typ)
 
 	// Re-fetching returns the SAME instance — registry is keyed by type,
 	// so a single Register call means a single live instance.
-	r2, _ := remote.Get("datadatdat")
+	r2, _ := remote.Get("dit")
 	assert.Same(t, r, r2, "registry must return the same instance on repeated Get calls")
 }
 
@@ -1312,7 +1312,7 @@ func TestSingleRegistration(t *testing.T) {
 // "for display only"; sensitive properties must be redacted. Guards against
 // arch-review issue #40 finding #2.
 func TestToURLRedactsAPIToken(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 
 	const literalToken = "super-secret-token-do-not-leak"
 	_, props, err := r.ToURL(map[string]interface{}{
@@ -1341,7 +1341,7 @@ func TestToURLRedactsAPIToken(t *testing.T) {
 // non-sensitive string properties are passed through unmodified — only
 // api_token gets redacted.
 func TestToURLPreservesUnknownStringProperties(t *testing.T) {
-	r, _ := remote.Get("datadatdat")
+	r, _ := remote.Get("dit")
 	_, props, err := r.ToURL(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
 		propOrg:        propOrg,
@@ -1398,6 +1398,6 @@ func TestDoRequestSetsUserAgent(t *testing.T) {
 	assert.NoError(t, err)
 	_ = resp.Body.Close()
 
-	assert.Contains(t, seenUA, "datadatdat-remote-go",
+	assert.Contains(t, seenUA, "dit-remote-go",
 		"User-Agent header must identify the provider")
 }
