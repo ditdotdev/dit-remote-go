@@ -1,7 +1,7 @@
-// Package datadatdat provides a remote provider for connecting d3 CLI to datadatdat-remote-server.
-// This provider implements the remote.Remote interface and communicates with the datadatdat-remote-server
+// Package dit provides a remote provider for connecting d3 CLI to dit-remote-server.
+// This provider implements the remote.Remote interface and communicates with the dit-remote-server
 // HTTP APIs to store and retrieve commits.
-package datadatdat
+package dit
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/datadatdat/remote-sdk-go/remote"
+	"github.com/ditdotdev/remote-sdk-go/remote"
 )
 
 const (
@@ -25,7 +25,7 @@ const (
 	propPort       = "port"
 
 	// userAgent identifies this provider on outbound HTTP requests.
-	userAgent = "datadatdat-remote-go/dev"
+	userAgent = "dit-remote-go/dev"
 
 	// redactedValue is substituted for sensitive property values in ToURL
 	// output. ToURL is documented as "for display only", so any sensitive
@@ -34,7 +34,7 @@ const (
 	redactedValue = "****"
 )
 
-// Provider implements the remote.Remote interface for datadatdat-remote-server.
+// Provider implements the remote.Remote interface for dit-remote-server.
 type Provider struct {
 	httpClient *http.Client
 }
@@ -69,7 +69,7 @@ type listCommitsResponse struct {
 	NextCursor string           `json:"nextCursor,omitempty"`
 }
 
-// NewProvider creates a new datadatdat remote provider instance.
+// NewProvider creates a new dit remote provider instance.
 // The httpClient is initialized lazily on first use by getHTTPClient — the
 // constructor intentionally does not eagerly construct the http.Client to
 // avoid duplicating that logic in two places (see arch-review #40 finding #6).
@@ -179,13 +179,13 @@ func parseCommitResponse(cr commitResponse) remote.Commit {
 	}
 }
 
-// Type returns the remote type identifier for the datadatdat remote.
-// Returns "datadatdat" to match the Kotlin provider name
+// Type returns the remote type identifier for the dit remote.
+// Returns "dit" to match the Kotlin provider name
 func (p *Provider) Type() (string, error) {
-	return "datadatdat", nil
+	return "dit", nil
 }
 
-// FromURL parses a datadatdat remote URL and additional properties to create remote properties.
+// FromURL parses a dit remote URL and additional properties to create remote properties.
 // Expected URL format: http://hostname:port/org/repo or https://hostname/org/repo
 func (p *Provider) FromURL(rawURL string, additionalProperties map[string]string) (map[string]interface{}, error) {
 	parsedURL, err := url.Parse(rawURL)
@@ -507,7 +507,7 @@ func init() {
 	p := &Provider{}
 	remote.Register(p)
 	// NOTE: We don't register separate http/https providers because
-	// the datadatdat provider handles both http:// and https:// URLs
+	// the dit provider handles both http:// and https:// URLs
 	// directly in its FromURL() method. Registering separate providers
 	// would cause the wrong provider name to be returned.
 }
