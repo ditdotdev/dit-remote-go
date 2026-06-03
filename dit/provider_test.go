@@ -982,11 +982,11 @@ func TestFromURLPortOutOfRange(t *testing.T) {
 	assert.Contains(t, err.Error(), "70000")
 }
 
-// TestGetParametersEnvFallback tests api_token from DATADATDAT_API_KEY env var
+// TestGetParametersEnvFallback tests api_token from DIT_API_KEY env var
 func TestGetParametersEnvFallback(t *testing.T) {
 	r, _ := remote.Get("dit")
-	_ = os.Setenv("DATADATDAT_API_KEY", "env-token-123")
-	defer func() { _ = os.Unsetenv("DATADATDAT_API_KEY") }()
+	_ = os.Setenv("DIT_API_KEY", "env-token-123")
+	defer func() { _ = os.Unsetenv("DIT_API_KEY") }()
 
 	props, err := r.GetParameters(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
@@ -1095,11 +1095,11 @@ func TestParseCommitResponseMetadataDoesNotOverrideStandard(t *testing.T) {
 }
 
 // TestGetParametersExplicitTokenTakesPrecedenceOverEnv tests that an explicit api_token
-// in properties is not overwritten by the DATADATDAT_API_KEY env var
+// in properties is not overwritten by the DIT_API_KEY env var
 func TestGetParametersExplicitTokenTakesPrecedenceOverEnv(t *testing.T) {
 	r, _ := remote.Get("dit")
-	_ = os.Setenv("DATADATDAT_API_KEY", "env-token")
-	defer func() { _ = os.Unsetenv("DATADATDAT_API_KEY") }()
+	_ = os.Setenv("DIT_API_KEY", "env-token")
+	defer func() { _ = os.Unsetenv("DIT_API_KEY") }()
 
 	props, err := r.GetParameters(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
@@ -1116,7 +1116,7 @@ func TestGetParametersExplicitTokenTakesPrecedenceOverEnv(t *testing.T) {
 // explicitly set nor available via environment variable
 func TestGetParametersNoEnvNoToken(t *testing.T) {
 	r, _ := remote.Get("dit")
-	_ = os.Unsetenv("DATADATDAT_API_KEY")
+	_ = os.Unsetenv("DIT_API_KEY")
 
 	props, err := r.GetParameters(map[string]interface{}{
 		propAPIBaseURL: testLocalhost,
