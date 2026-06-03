@@ -310,7 +310,7 @@ func (p *Provider) ToURL(properties map[string]interface{}) (string, map[string]
 
 // GetParameters extracts operation parameters from remote properties.
 // This is called before each operation to get parameters like API tokens.
-// If api_token is not present in properties, it will be read from the DATADATDAT_API_KEY environment variable.
+// If api_token is not present in properties, it will be read from the DIT_API_KEY environment variable.
 func (p *Provider) GetParameters(remoteProperties map[string]interface{}) (map[string]interface{}, error) {
 	// Create a copy of the properties to avoid modifying the original
 	params := make(map[string]interface{})
@@ -320,7 +320,7 @@ func (p *Provider) GetParameters(remoteProperties map[string]interface{}) (map[s
 
 	// If api_token is not already present, try to read from environment variable
 	if _, hasToken := params[propAPIToken]; !hasToken {
-		if envToken := os.Getenv("DATADATDAT_API_KEY"); envToken != "" {
+		if envToken := os.Getenv("DIT_API_KEY"); envToken != "" {
 			params[propAPIToken] = envToken
 		}
 	}
