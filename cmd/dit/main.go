@@ -1,3 +1,6 @@
+// Copyright Dit 2026
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package main provides the Dit remote server for connecting d3 CLI to dit-remote-server.
 package main
 

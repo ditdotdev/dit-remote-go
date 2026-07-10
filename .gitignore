@@ -51,3 +51,6 @@ coverage.html
 # Coverage profiles + local repo-health output
 cov*.out
 .health/
+
+# Compiled binaries (built by go build / make; never commit)
+/bin/
