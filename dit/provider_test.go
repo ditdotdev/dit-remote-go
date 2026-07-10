@@ -1,6 +1,6 @@
-/*
- * Copyright Dit.
- */
+// Copyright Dit 2026
+// SPDX-License-Identifier: BUSL-1.1
+
 package dit
 
 import (
@@ -46,9 +46,9 @@ func TestRegistered(t *testing.T) {
 func TestFromURL(t *testing.T) {
 	r, _ := remote.Get("dit")
 
-	props, err := r.FromURL("http://data.dit.io:8080/myorg/myrepo", map[string]string{})
+	props, err := r.FromURL("http://data.example.invalid:8080/myorg/myrepo", map[string]string{})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "http://data.dit.io:8080", props[propAPIBaseURL])
+		assert.Equal(t, "http://data.example.invalid:8080", props[propAPIBaseURL])
 		assert.Equal(t, testMyOrg, props[propOrg])
 		assert.Equal(t, testMyRepo, props[propRepo])
 		assert.Equal(t, 8080, props[propPort])
@@ -59,9 +59,9 @@ func TestFromURL(t *testing.T) {
 func TestFromURLHTTPS(t *testing.T) {
 	r, _ := remote.Get("dit")
 
-	props, err := r.FromURL("https://data.dit.io/myorg/myrepo", map[string]string{})
+	props, err := r.FromURL("https://data.example.invalid/myorg/myrepo", map[string]string{})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "https://data.dit.io", props[propAPIBaseURL])
+		assert.Equal(t, "https://data.example.invalid", props[propAPIBaseURL])
 		assert.Equal(t, testMyOrg, props[propOrg])
 		assert.Equal(t, testMyRepo, props[propRepo])
 		assert.Nil(t, props[propPort])
@@ -195,12 +195,12 @@ func TestToURLHTTPS(t *testing.T) {
 	r, _ := remote.Get("dit")
 
 	u, props, err := r.ToURL(map[string]interface{}{
-		propAPIBaseURL: "https://data.dit.io",
+		propAPIBaseURL: "https://data.example.invalid",
 		propOrg:        testMyOrg,
 		propRepo:       testMyRepo,
 	})
 	if assert.NoError(t, err) {
-		assert.Equal(t, "https://data.dit.io/myorg/myrepo", u)
+		assert.Equal(t, "https://data.example.invalid/myorg/myrepo", u)
 		assert.Empty(t, props)
 	}
 }

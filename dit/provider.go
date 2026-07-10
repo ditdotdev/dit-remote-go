@@ -1,3 +1,6 @@
+// Copyright Dit 2026
+// SPDX-License-Identifier: BUSL-1.1
+
 // Package dit provides a remote provider for connecting d3 CLI to dit-remote-server.
 // This provider implements the remote.Remote interface and communicates with the dit-remote-server
 // HTTP APIs to store and retrieve commits.
