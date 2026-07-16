@@ -408,9 +408,6 @@ func (p *Provider) ListCommits(properties map[string]interface{}, parameters map
 	// Use the correct API endpoint format (no query parameter)
 	fullURL := apiURL
 
-	// TODO: Add tag filtering support when server implements it
-	// For now, we'll filter client-side
-
 	// Make the HTTP request
 	ctx := context.Background()
 	resp, err := p.doRequest(ctx, http.MethodGet, fullURL, nil, parameters)
