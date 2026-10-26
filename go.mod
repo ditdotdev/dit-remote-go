@@ -1,6 +1,6 @@
 module github.com/ditdotdev/dit-remote-go
 
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/ditdotdev/remote-sdk-go v1.10.2
