@@ -3,7 +3,7 @@ module github.com/ditdotdev/dit-remote-go
 go 1.26.10
 
 require (
-	github.com/ditdotdev/remote-sdk-go v1.10.3
+	github.com/ditdotdev/remote-sdk-go v1.10.4
 	github.com/stretchr/testify v1.12.1
 )
 
